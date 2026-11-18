@@ -10,7 +10,7 @@ let fail = false, closed = 0;
 const controller = {purpose: TERMINAL,
     keyvalPress(k) {if (fail && k === LEFT) throw Error('input failed');events.push(['down', k]);},
     keyvalRelease(k) {events.push(['up', k]);}};
-const row = [{action: 'levelSwitch', iconName: 'osk-shift-symbolic', level: 'shift', width: 2},
+let row = [{action: 'levelSwitch', iconName: 'osk-shift-symbolic', level: 'shift', width: 2},
     {strings: ['z']}, {action: 'levelSwitch', iconName: 'osk-shift-symbolic', level: 'shift'}];
 const caps = [{action: 'levelSwitch', iconName: 'osk-caps-lock-symbolic', level: 'shift'}];
 const layout = {get_children: () => []};
@@ -24,7 +24,7 @@ const keyboard = {_keyboardController: controller, _modifiers: new Set(), _modif
     _setModifierEnabled(k, enabled) {if (enabled) this._modifiers.add(k);else this._modifiers.delete(k);}};
 const originals = {add: keyboard._addRowKeys, level: keyboard._setActiveLevel, layout: keyboard._updateLayout, update: keyboard._updateKeys, close: keyboard.close,
     press: controller.keyvalPress, release: controller.keyvalRelease};
-const ext = new ctx.TerminalShiftModifier(keyboard, SHIFT, TERMINAL, undefined, [0, 1, 6, 7], {disconnect: id => disconnected.push(id)});
+const ext = new ctx.TerminalShiftModifier(keyboard, SHIFT, TERMINAL, undefined, [2, 3, 4], {disconnect: id => disconnected.push(id)});
 keyboard._layers = {default: {}};keyboard._setActiveLevel('shift');assert.equal(selectedLevels.at(-1), 'default');
 keyboard._surroundingTextId = 42;keyboard._updateKeys();assert.deepEqual(disconnected, [42]);assert.equal(keyboard._surroundingTextId, 0);
 keyboard._layers = {default: {}, shift: {}};keyboard._setActiveLevel('shift');assert.equal(selectedLevels.at(-1), 'shift');
@@ -39,14 +39,14 @@ controller.purpose = 0;keyboard._updateLayout('us', 0);
 assert.equal(purposes.at(-1), TERMINAL);assert.equal(seen.at(-1)[0].action, 'modifier');
 assert.equal(controller.purpose, 0, 'visual layout must not change the app input purpose');
 keyboard._updateLayout('us', 1);assert.equal(purposes.at(-1), TERMINAL);
-for (const purpose of [6, 7]) {
+for (const purpose of [5, 6, 7, 8, 9]) {
     controller.purpose = purpose;keyboard._updateLayout('us', purpose);
-    assert.equal(purposes.at(-1), TERMINAL, 'URL/email use the same extended visual layout');
+    assert.equal(purposes.at(-1), TERMINAL, 'URL/email/name/password/PIN use the extended layout');
     assert.equal(seen.at(-1)[0].action, 'modifier');assert.equal(controller.purpose, purpose);
 }
-for (const purpose of [2, 3, 4, 8, 9]) {
+for (const purpose of [2, 3, 4]) {
     controller.purpose = purpose;keyboard._updateLayout('us', purpose);
-    assert.equal(purposes.at(-1), purpose, 'special-purpose layout stays native');
+    assert.equal(purposes.at(-1), purpose, 'digits/number/phone keep the native numeric keypad');
     assert.equal(seen.at(-1), row);
 }
 controller.purpose = TERMINAL;
@@ -67,10 +67,34 @@ events.length = 0;controller.keyvalPress(LEFT);controller.keyvalRelease(LEFT);
 assert.deepEqual(events, [['down', LEFT], ['up', LEFT]], 'plain key after clearing');
 keyboard._setModifierEnabled(SHIFT, true);keyboard._updateKeys();
 assert(!keyboard._modifiers.has(SHIFT), 'layout changes clear selected Shift');
+// The extended bottom row must gain a comma without growing or reflowing.
+row = [{action: 'modifier', keyval: '0xffe3', label: 'Ctrl'},
+    {action: 'levelSwitch', label: '?123', level: 'opt'},
+    {action: 'modifier', keyval: '0xffe9', label: 'Alt'},
+    {strings: [' '], width: 4},
+    {action: 'emoji', iconName: 'osk-emoji-picker-symbolic'},
+    {action: 'languageMenu', iconName: 'osk-layout-symbolic'},
+    {iconName: 'go-previous-symbolic', keyval: LEFT},
+    {iconName: 'go-down-symbolic', keyval: 0xff54},
+    {iconName: 'go-next-symbolic', keyval: 0xff53},
+    {action: 'hide', iconName: 'osk-hide-symbolic'}];
+const native = row.map(key => ({...key}));
+keyboard._updateLayout('us', 0);
+const bottom = seen.at(-1);
+const label = key => key.label ?? key.strings?.[0] ?? key.action ?? key.iconName;
+assert.deepEqual(bottom.map(label), ['Ctrl', '?123', 'Alt', 'emoji', ' ', 'languageMenu', ',',
+    'go-previous-symbolic', 'go-down-symbolic', 'go-next-symbolic', 'hide'],
+'Alt, comma, emoji and language menu reach the thumb-reachable slots');
+assert.equal(bottom.reduce((sum, key) => sum + (key.width ?? 1), 0), 13,
+    'the bottom row keeps its total width');
+assert.equal(bottom.find(key => key.strings?.[0] === ' ').width, 3,
+    'the space bar gives one column to the injected Alt');
+assert.deepEqual(row, native, 'the native bottom-row definition is not mutated');
+row = native.map(key => ({...key}));
 ext.destroy();
 assert.equal(keyboard._addRowKeys, originals.add);assert.equal(keyboard._updateKeys, originals.update);
 assert.equal(keyboard._updateLayout, originals.layout);
 assert.equal(keyboard._setActiveLevel, originals.level);
 assert.equal(keyboard.close, originals.close);assert.equal(controller.keyvalPress, originals.press);
 assert.equal(controller.keyvalRelease, originals.release);assert.equal(seen.at(-1), row);
-console.log('Unified normal/alpha/URL/email/terminal layout, special-purpose preservation, retained Caps, Shift arrows/Tab, native text and restoration passed');
+console.log('Unified text/URL/email/password/terminal layout, numeric-keypad preservation, bottom-row comma, retained Caps, Shift arrows/Tab, native text and restoration passed');
