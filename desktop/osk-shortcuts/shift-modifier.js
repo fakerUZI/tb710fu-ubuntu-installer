@@ -1,4 +1,22 @@
-function alignSymbolRow(keys, shiftKeyval) {
+const SYMBOL_LANGUAGE = 'tbSymbolLanguage';
+const CHINESE_PUNCTUATION = new Map([
+    [',', ['，']], ['.', ['。', '……']], [';', ['；']], [':', ['：']],
+    ['!', ['！']], ['?', ['？']], ['/', ['、', '／']], ['~', ['～']],
+    ['(', ['（']], [')', ['）']], ['[', ['【', '［']], [']', ['】', '］']],
+    ['{', ['｛']], ['}', ['｝']], ['<', ['《', '〈']], ['>', ['》', '〉']],
+    ['"', ['“', '”']], ["'", ['‘', '’']],
+]);
+
+function useChinesePunctuation(keys) {
+    return keys.map(key => {
+        const punctuation = CHINESE_PUNCTUATION.get(key.strings?.[0]);
+        return punctuation
+            ? {...key, strings: [...new Set([...punctuation, ...key.strings.slice(1)])]}
+            : key;
+    });
+}
+
+function alignSymbolRow(keys, shiftKeyval, chineseSymbols) {
     const first = keys[0];
     const last = keys.at(-1);
     if (keys.length === 11 && last.action === 'delete') {
@@ -6,7 +24,8 @@ function alignSymbolRow(keys, shiftKeyval) {
     }
     if (keys.length === 10 && last.iconName === 'osk-enter-symbolic') {
         // The comma moves here from the space row, keeping punctuation full-size.
-        return [{label: 'Esc', keyval: '0xff1b'}, {...first, leftOffset: 0},
+        return [{label: chineseSymbols ? '英符' : '中符', action: SYMBOL_LANGUAGE},
+            {...first, leftOffset: 0},
             ...keys.slice(1, -1), {strings: [',']}, last];
     }
     if (keys.length === 9 && ['opt', 'opt+shift'].includes(first.level) &&
@@ -49,6 +68,7 @@ export class TerminalShiftModifier {
         this._inputMethod = inputMethod;
         this._injected = new Set();
         this._down = false;
+        this._chineseSymbols = false;
         const extension = this;
         this._setActiveLevel = keyboard._setActiveLevel;
         keyboard._setActiveLevel = function (level) {
@@ -127,10 +147,24 @@ export class TerminalShiftModifier {
                     }
                 }
             }
-            if (layout.mode === 'locked')
-                keys = alignSymbolRow(keys, shiftKeyval);
+            if (layout.mode === 'locked') {
+                const aligned = alignSymbolRow(keys, shiftKeyval, extension._chineseSymbols);
+                keys = aligned !== keys && extension._chineseSymbols
+                    ? useChinesePunctuation(aligned)
+                    : aligned;
+            }
             extension._addRowKeys.call(this, keys, layout, emojiVisible);
-            for (const key of layout.get_children()) {
+            const actors = layout.get_children();
+            if (keys[0]?.action === SYMBOL_LANGUAGE) {
+                const toggle = actors.find(key => key.keyButton?.get_label() === keys[0].label);
+                if (toggle) {
+                    toggle.keyButton.accessible_name =
+                        extension._chineseSymbols ? '切换到英文标点' : '切换到中文标点';
+                    toggle.connect('released', () =>
+                        extension._toggleSymbolLanguage(layout).catch(error => console.error(error)));
+                }
+            }
+            for (const key of actors) {
                 if (key.keyButton?.get_label() === 'Shift') {
                     key.keyButton.add_style_class_name('tb-osk-shift-modifier');
                     key.keyButton.accessible_name = 'Shift 组合键，点按开启或取消';
@@ -159,6 +193,19 @@ export class TerminalShiftModifier {
         this._controller.keyvalPress = keyval => this._keyPress(keyval);
         this._controller.keyvalRelease = keyval => this._keyRelease(keyval);
         keyboard._updateKeys();
+    }
+    async _toggleSymbolLanguage(layout) {
+        // Rebuild after the released signal has finished using its key actor.
+        await Promise.resolve();
+        const keyboard = this._keyboard;
+        if (this._destroyed || keyboard._currentPage !== layout)
+            return;
+        const level = Object.keys(keyboard._layers).find(name => keyboard._layers[name] === layout);
+        if (!level)
+            return;
+        this._chineseSymbols = !this._chineseSymbols;
+        keyboard._updateKeys();
+        keyboard._setActiveLevel(level);
     }
     _keyPress(keyval) {
         if (keyval === this._shift) {
@@ -207,6 +254,7 @@ export class TerminalShiftModifier {
         this._down = false;
     }
     destroy() {
+        this._destroyed = true;
         this._clear();
         const keyboard = this._keyboard;
         if (keyboard._surroundingTextId && this._inputMethod) {

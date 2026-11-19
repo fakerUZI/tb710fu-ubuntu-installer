@@ -57,7 +57,7 @@ def main():
         installed = digest(old)
         if installed == row['after']:
             continue
-        if installed not in (row['before'], row.get('previous')):
+        if installed not in (row['before'], *row.get('previous', ())):
             sys.exit(f'扩展版本不匹配：{path}。此补丁支持原版 0.3.0 和已发布的屏幕键盘补丁。')
         changes.append((target, new, old, info))
     if not changes:

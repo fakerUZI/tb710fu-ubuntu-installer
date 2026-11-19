@@ -125,12 +125,25 @@ for (const [toggleLabel, toggleLevel, punctuation] of [
         assert.equal(column, 13, 'use the letter keyboard width');
     });
     for (const [name, position] of [
-        ['Tab', [0, 0]], ['Esc', [1, 0]], ['Shift', [2, 0]], ['go-up-symbolic', [2, 10]],
+        ['Tab', [0, 0]], ['中符', [1, 0]], ['Shift', [2, 0]], ['go-up-symbolic', [2, 10]],
         ['Ctrl', [3, 0]], ['ABC', [3, 1]], ['Alt', [3, 2]],
         ['go-previous-symbolic', [3, 9]], ['go-down-symbolic', [3, 10]], ['go-next-symbolic', [3, 11]],
         [toggleLabel, [2, 11]],
     ]) assert.deepEqual(positions.get(name), position);
     assert.equal(parseInt(rendered[0][0].keyval, 16), TAB, 'GNOME reads raw keyvals in base 16');
+    assert.equal(rendered[1][0].action, 'tbSymbolLanguage');
+    ext._chineseSymbols = true;
+    const chineseStart = seen.length;
+    rows.forEach(keys => keyboard._addRowKeys(keys, symbolLayout, true));
+    const localized = seen.slice(chineseStart);
+    assert.equal(localized[1][0].label, '英符');
+    assert.equal(localized[1].at(-2).strings[0], '，');
+    assert.equal(localized[2].at(-3).strings[0], '。');
+    assert.equal(localized[2].at(-3).strings[1], '……');
+    assert.equal(localized[0][1].strings[0], '1');
+    for (const [index, keys] of localized.entries())
+        assert.equal(keys.length, rendered[index].length, 'punctuation switch preserves key positions');
+    ext._chineseSymbols = false;
     keyboard._addRowKeys(rows[0], layout, true);
     assert.equal(seen.at(-1), rows[0], 'unlocked layout stays intact');
 }
