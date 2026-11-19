@@ -121,6 +121,7 @@ def prepare_inputs(folder, base, remote):
     (folder/'run.sh').write_text('''#!/bin/bash
 set -euo pipefail
 umask 077
+export PYTHONDONTWRITEBYTECODE=1
 mkdir -p -m 700 "$1"
 [ "$(sha256sum /dev/disk/by-partlabel/boot_a | awk '{print $1}')" = d83ee187bce60b30c2f28c177b3ab158ea96e5688547e06d3dd4d7a7ed1d6e10 ] || exit 1
 python3 "$2/scan_private_markers.py" /dev/disk/by-partlabel/boot_a

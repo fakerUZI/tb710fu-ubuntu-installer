@@ -32,6 +32,10 @@ class BuilderTests(unittest.TestCase):
     def test_power_and_boot_are_checked_before_packaging(self):
         self.assertEqual(m.digest(m.BOOT),m.BOOT_HASH)
         self.assertEqual(m.digest(Path(__file__).with_name('tb-power-key-reviewed.py')),m.POWER_HASH)
+    def test_root_helpers_do_not_leave_root_owned_bytecode(self):
+        with tempfile.TemporaryDirectory() as td:
+            folder=Path(td); m.prepare_inputs(folder,'/root/tb710fu-packager/'+'a'*32,'/tmp/tb-packager-'+'a'*32)
+            self.assertIn('export PYTHONDONTWRITEBYTECODE=1',(folder/'run.sh').read_text())
     def test_assemble_writes_only_expected_manifest_and_payload(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)/'root'; root.mkdir(); out=Path(d)/'out'; out.mkdir()
