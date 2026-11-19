@@ -11,29 +11,50 @@ function useChinesePunctuation(keys) {
     return keys.map(key => {
         const punctuation = CHINESE_PUNCTUATION.get(key.strings?.[0]);
         return punctuation
-            ? {...key, strings: [...new Set([...punctuation, ...key.strings.slice(1)])]}
+            ? {...key, strings: [...new Set([...punctuation, ...key.strings])]}
             : key;
     });
+}
+
+function leadWithSymbols(keys, symbols) {
+    const preferred = symbols.map(symbol => keys.find(key => key.strings?.[0] === symbol));
+    return preferred.every(Boolean)
+        ? [...preferred, ...keys.filter(key => !preferred.includes(key))]
+        : keys;
+}
+
+function arrangeAdvancedSymbols(keys) {
+    const ordered = leadWithSymbols(keys, ['[', ']', '\\', '©', '®', '™', '℅']);
+    if (ordered === keys || ordered.length !== 7)
+        return keys;
+    const [left, right, slash, ...marks] = ordered;
+    return [left, right, slash, {strings: ['≤']}, {strings: ['≥']}, {strings: ['≠']},
+        {...marks[0], strings: marks.flatMap(key => key.strings)}];
 }
 
 function alignSymbolRow(keys, shiftKeyval, chineseSymbols) {
     const first = keys[0];
     const last = keys.at(-1);
     if (keys.length === 11 && last.action === 'delete') {
-        return [{label: 'Tab', keyval: '0xff09'}, ...keys.slice(0, -1), {...last, width: 2}];
+        const symbols = leadWithSymbols(keys.slice(0, -1), ['|', '`', '~']);
+        return [{label: 'Tab', keyval: '0xff09'}, ...symbols, {...last, width: 2}];
     }
     if (keys.length === 10 && last.iconName === 'osk-enter-symbolic') {
         // The comma moves here from the space row, keeping punctuation full-size.
+        const symbols = leadWithSymbols(
+            [{...first, leftOffset: 0}, ...keys.slice(1, -1)], ['{', '}']);
         return [{label: chineseSymbols ? '英符' : '中符', action: SYMBOL_LANGUAGE},
-            {...first, leftOffset: 0},
-            ...keys.slice(1, -1), {strings: [',']}, last];
+            ...symbols, {strings: [',']}, last];
     }
     if (keys.length === 9 && ['opt', 'opt+shift'].includes(first.level) &&
         first.action === 'levelSwitch' && last.action === 'levelSwitch' && first.level === last.level) {
-        // Only one symbol-page switch is needed. Shift, period and Up match the letter layout.
+        const advancedPage = last.level === 'opt';
+        const symbols = keys.slice(1, -1);
+        const pageSwitch = advancedPage ? '⇧ ?123' : chineseSymbols ? '⇧ 【】|' : '⇧ []{}|';
+        // The right Shift position changes pages. The left Shift still works for shortcuts.
         return [{label: 'Shift', action: 'modifier', keyval: shiftKeyval, width: 2},
-            ...keys.slice(1, -1), {strings: ['.', '…']},
-            {iconName: 'go-up-symbolic', keyval: '0xff52'}, {...last, width: 2}];
+            ...(advancedPage ? arrangeAdvancedSymbols(symbols) : symbols), {strings: ['.', '…']},
+            {iconName: 'go-up-symbolic', keyval: '0xff52'}, {...last, label: pageSwitch, width: 2}];
     }
     const [, left, right, space, comma, period, emoji, language, hide] = keys;
     if (keys.length === 9 && first.action === 'levelSwitch' && first.level === 'default' &&

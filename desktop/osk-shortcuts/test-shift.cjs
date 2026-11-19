@@ -93,15 +93,17 @@ assert.deepEqual(row, native, 'the native bottom-row definition is not mutated')
 const symbolLayout = {mode: 'locked', get_children: () => []};
 const positions = new Map();
 for (const [toggleLabel, toggleLevel, punctuation] of [
-    ['=/<', 'opt+shift', ['_', '/']], ['?123', 'opt', ['<', '>']],
+    ['⇧ []{}|', 'opt+shift', ['_', '/']], ['⇧ ?123', 'opt', ['<', '>']],
 ]) {
-    const toggle = {action: 'levelSwitch', level: toggleLevel, label: toggleLabel};
+    const advanced = toggleLevel === 'opt';
+    const toggle = {action: 'levelSwitch', level: toggleLevel, label: advanced ? '?123' : '=/<'};
     const makeKeys = characters => Array.from(characters, value => ({strings: [value]}));
     const rows = [
-        [...makeKeys('1234567890'), {action: 'delete', width: 1.5}],
-        [{strings: ['@'], leftOffset: 0.5}, ...makeKeys('#$%&-+()'),
-            {iconName: 'osk-enter-symbolic', width: 2}],
-        [{...toggle, width: 1.5}, ...makeKeys(['*', '"', "'", ':', ';', '!', '?']), {...toggle, width: 3}],
+        [...makeKeys(advanced ? '~`|•√Π÷×¶∆' : '1234567890'), {action: 'delete', width: 1.5}],
+        [{strings: [advanced ? '£' : '@'], leftOffset: 0.5},
+            ...makeKeys(advanced ? '¢€¥^°={}' : '#$%&-+()'), {iconName: 'osk-enter-symbolic', width: 2}],
+        [{...toggle, width: 1.5}, ...makeKeys(advanced ? '\\©®™℅[]' : ['*', '"', "'", ':', ';', '!', '?']),
+            {...toggle, width: 3}],
         [{action: 'levelSwitch', level: 'default', label: 'ABC', width: 1.5},
             ...makeKeys(punctuation), {strings: [' '], width: 3}, {strings: [',']}, {strings: ['.', '…']},
             {action: 'emoji'}, {action: 'languageMenu'}, {action: 'hide'}],
@@ -113,8 +115,16 @@ for (const [toggleLabel, toggleLevel, punctuation] of [
     assert.equal(rendered.length, 4, 'keep the four rows used for letter entry');
     assert.equal(JSON.stringify(rows), original, 'native model stays intact');
     const strings = keys => keys.flatMap(key => key.strings ?? []);
-    assert.deepEqual(rows.flatMap(strings).sort(), rendered.flatMap(strings).sort(),
+    const extra = advanced ? ['≤', '≥', '≠'] : [];
+    assert.deepEqual([...rows.flatMap(strings), ...extra].sort(), rendered.flatMap(strings).sort(),
         'keep all symbols and long-press variants');
+    if (advanced) {
+        assert.deepEqual(Array.from(rendered[0].slice(1, 4), key => key.strings[0]), ['|', '`', '~']);
+        assert.deepEqual(Array.from(rendered[1].slice(1, 3), key => key.strings[0]), ['{', '}']);
+        assert.deepEqual(Array.from(rendered[2].slice(1, 7), key => key.strings[0]),
+            ['[', ']', '\\', '≤', '≥', '≠']);
+        assert.deepEqual(Array.from(rendered[2][7].strings), ['©', '®', '™', '℅']);
+    }
     rendered.forEach((keys, rowIndex) => {
         let column = 0;
         keys.forEach(key => {
@@ -140,7 +150,11 @@ for (const [toggleLabel, toggleLevel, punctuation] of [
     assert.equal(localized[1].at(-2).strings[0], '，');
     assert.equal(localized[2].at(-3).strings[0], '。');
     assert.equal(localized[2].at(-3).strings[1], '……');
-    assert.equal(localized[0][1].strings[0], '1');
+    assert.equal(localized[0][1].strings[0], advanced ? '|' : '1');
+    if (advanced) {
+        assert.equal(localized[2][1].strings[0], '【');
+        assert(localized[2][1].strings.includes('['), 'ASCII remains accessible in Chinese mode');
+    }
     for (const [index, keys] of localized.entries())
         assert.equal(keys.length, rendered[index].length, 'punctuation switch preserves key positions');
     ext._chineseSymbols = false;
