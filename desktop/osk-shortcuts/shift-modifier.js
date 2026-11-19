@@ -1,8 +1,8 @@
-// Use the extended layout in ordinary text fields as well as terminals.
+// Use the extended layout for every text purpose, not only terminals.
 // Keep its upper Caps key and replace only the lower-left Shift.
 // Native modifier registration supplies touch handling and the latched state.
 export class TerminalShiftModifier {
-    constructor(keyboard, shiftKeyval, terminalPurpose, onKeysAdded, textPurposes = [], inputMethod = null) {
+    constructor(keyboard, shiftKeyval, terminalPurpose, onKeysAdded, nativePurposes = [], inputMethod = null) {
         this._keyboard = keyboard;
         this._shift = shiftKeyval;
         this._controller = keyboard._keyboardController;
@@ -20,9 +20,13 @@ export class TerminalShiftModifier {
             return extension._setActiveLevel.call(this, target);
         };
         this._updateLayout = keyboard._updateLayout;
-        const extendedPurposes = new Set([terminalPurpose, ...textPurposes]);
+        // Only digit/number/phone purposes keep GNOME's numeric keypad, which is
+        // what verification codes and amounts need. Every other purpose gets the
+        // extended layout: the us, email and url layouts have no Ctrl, Shift or
+        // Alt row at all, and password/PIN fields are still text.
+        const numericPurposes = new Set(nativePurposes);
         keyboard._updateLayout = function (group, purpose) {
-            extension._buildingExtendedLayout = extendedPurposes.has(purpose);
+            extension._buildingExtendedLayout = !numericPurposes.has(purpose);
             try {
                 return extension._updateLayout.call(this, group,
                     extension._buildingExtendedLayout ? terminalPurpose : purpose);
@@ -33,12 +37,55 @@ export class TerminalShiftModifier {
         this._addRowKeys = keyboard._addRowKeys;
         keyboard._addRowKeys = function (keys, layout, emojiVisible) {
             const first = keys[0];
-            if ((this._keyboardController.purpose === terminalPurpose || extension._buildingExtendedLayout) &&
+            // A plain row refresh rebuilds every key without going through
+            // _updateLayout, so fall back to the purpose the controller holds.
+            // Without it the injected Shift reverts to the native level switch.
+            const extended = extension._buildingExtendedLayout ||
+                this._keyboardController?.purpose === terminalPurpose;
+            if (extended &&
                 first?.action === 'levelSwitch' &&
                 first.iconName === 'osk-shift-symbolic') {
+                // The extended layout's lower-left key is a level switch, not a
+                // modifier, so Ctrl+Shift+V can never be pressed there. Replace
+                // it with a real Shift and keep the native row untouched.
                 keys = [{action: 'modifier', keyval: shiftKeyval,
                     label: 'Shift', width: first.width, height: first.height,
                     leftOffset: first.leftOffset}, ...keys.slice(1)];
+            }
+            // The extended bottom row ships Ctrl/?123/Alt and no Shift. Chinese
+            // input needs a comma on every press, so the row becomes:
+            //   Ctrl ?123 Alt , [space] emoji -> ...
+            // Alt takes the space freed by the injected Shift and the comma takes
+            // Alt's old slot. The key count and total width stay unchanged.
+            if (extended &&
+                keys.some(key => key.action === 'modifier' && key.label === 'Ctrl') &&
+                !keys.some(key => key.action === 'modifier' && key.label === 'Shift')) {
+                const altIndex = keys.findIndex(key => key.action === 'modifier' && key.label === 'Alt');
+                if (altIndex > 0) {
+                    keys = [...keys];
+                    const altKey = keys[altIndex];
+                    keys[altIndex] = {strings: [','], label: ',', width: altKey.width};
+                    keys.splice(altIndex, 0,
+                        {action: 'modifier', keyval: altKey.keyval, label: 'Alt'});
+                    const spaceIndex = keys.findIndex(key => key.strings?.[0] === ' ' && key.width > 1);
+                    if (spaceIndex >= 0)
+                        keys[spaceIndex] = {...keys[spaceIndex], width: keys[spaceIndex].width - 1};
+                    // Both thumbs rest on the space bar, so the two keys they use
+                    // most go beside it: emoji on the left, language menu on the
+                    // right. The comma moves to the former emoji slot. The three
+                    // keys are one column wide, so rotating them keeps the row.
+                    const commaIndex = keys.findIndex(key => key.strings?.[0] === ',');
+                    const emojiIndex = keys.findIndex(key => key.action === 'emoji');
+                    const langIndex = keys.findIndex(key => key.action === 'languageMenu');
+                    if (commaIndex >= 0 && emojiIndex >= 0 && langIndex >= 0) {
+                        const commaKey = keys[commaIndex];
+                        const emojiKey = keys[emojiIndex];
+                        const langKey = keys[langIndex];
+                        keys[commaIndex] = {...emojiKey, width: commaKey.width ?? 1};
+                        keys[emojiIndex] = {...langKey, width: emojiKey.width ?? 1};
+                        keys[langIndex] = {...commaKey, width: langKey.width ?? 1};
+                    }
+                }
             }
             extension._addRowKeys.call(this, keys, layout, emojiVisible);
             for (const key of layout.get_children()) {

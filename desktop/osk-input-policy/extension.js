@@ -5,6 +5,10 @@ import Gio from 'gi://Gio';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+// A finger rolls a few pixels even on a deliberate tap, while a scroll travels
+// much further. Anything beyond this radius is a gesture, not a tap.
+const TAP_SLOP = 12;
+
 function isExternalTypingKeyboard(bus, sysfsTarget, keyBits) {
     if (![3, 5].includes(Number.parseInt(bus, 16)) ||
         sysfsTarget.includes('/devices/virtual/input/'))
@@ -29,6 +33,10 @@ export default class InputPolicy extends Extension {
         this._touchWindow = null;
         this._fcitxPending = false;
         this._fcitxFocused = false;
+        this._fcitxProbePending = false;
+        this._fcitxProbeGen = -1;
+        this._fcitxProbeCount = 0;
+        this._fcitxProbeState = null;
         this._enabled = true;
         this._cancellable = new Gio.Cancellable();
         this._manager = Main.keyboard;
@@ -39,11 +47,45 @@ export default class InputPolicy extends Extension {
         this._deviceRemovedId = this._seat.connect('device-removed', () => this._refreshPhysicalKeyboards());
         // last-device-changed only fires when the device changes, not on
         // repeated taps from the same touchscreen. Track completed app taps.
+        // A swipe only scrolls the surface, it does not pick a text field, so a
+        // touch counts only when it ends where it began. Otherwise every scroll
+        // would run a focus probe and make the OSK open and close again.
+        this._touchStart = null;
         this._touchId = global.stage.connect('captured-event', (_stage, event) => {
-            if (event.type() !== Clutter.EventType.TOUCH_END)
+            const type = event.type();
+            if (type === Clutter.EventType.TOUCH_BEGIN) {
+                const source = global.stage.get_event_actor(event);
+                // Touches that start on the OSK, the panel or a popup are not
+                // aimed at a text field.
+                if (!source || !global.window_group.contains(source)) {
+                    this._touchStart = null;
+                    return Clutter.EVENT_PROPAGATE;
+                }
+                this._mode = 'touch';
+                // A second finger means pinch or two-finger scrolling.
+                if (this._touchStart) {
+                    this._touchStart.moved = true;
+                    return Clutter.EVENT_PROPAGATE;
+                }
+                const [x, y] = event.get_coords();
+                this._touchStart = {x, y, moved: false};
                 return Clutter.EVENT_PROPAGATE;
-            const source = global.stage.get_event_actor(event);
-            if (!source || !global.window_group.contains(source))
+            }
+            if (type === Clutter.EventType.TOUCH_UPDATE) {
+                const [x, y] = event.get_coords();
+                if (this._touchStart && (Math.abs(x - this._touchStart.x) > TAP_SLOP ||
+                    Math.abs(y - this._touchStart.y) > TAP_SLOP))
+                    this._touchStart.moved = true;
+                return Clutter.EVENT_PROPAGATE;
+            }
+            if (type !== Clutter.EventType.TOUCH_END && type !== Clutter.EventType.TOUCH_CANCEL)
+                return Clutter.EVENT_PROPAGATE;
+            const start = this._touchStart;
+            this._touchStart = null;
+            if (type !== Clutter.EventType.TOUCH_END || !start || start.moved)
+                return Clutter.EVENT_PROPAGATE;
+            const [endX, endY] = event.get_coords();
+            if (Math.abs(endX - start.x) > TAP_SLOP || Math.abs(endY - start.y) > TAP_SLOP)
                 return Clutter.EVENT_PROPAGATE;
             this._mode = 'touch';
             this._touchGeneration++;
@@ -109,6 +151,7 @@ export default class InputPolicy extends Extension {
                 this._openForTouch();
             } else if (!focused && recentlyTouched) {
                 this._checkQqFocus();
+                this._checkFcitxFocus();
             }
             return GLib.SOURCE_CONTINUE;
         });
@@ -123,7 +166,7 @@ export default class InputPolicy extends Extension {
         const window = global.display.focus_window;
         const klass = window?.get_wm_class()?.toLowerCase() ?? '';
         const shortcuts = Main.extensionManager.lookup('tb-osk-shortcuts@tb710fu')?.stateObj;
-        return JSON.stringify({version: 5, mode: this._mode,
+        return JSON.stringify({version: 6, mode: this._mode,
             layout: shortcuts?.getLayoutMetrics?.() ?? null,
             physicalKeyboardCount: this._physicalKeyboardCount,
             preeditVisible: !!(this._manager.visible && shortcuts?._preeditLabel?.visible),
@@ -134,7 +177,8 @@ export default class InputPolicy extends Extension {
             touchAgeMs: this._lastAppTouch ? GLib.get_monotonic_time() / 1000 - this._lastAppTouch : null,
             sameTouchedWindow: window === this._touchWindow,
             qqWindow: ['qq', 'linuxqq'].includes(klass),
-            fcitxFocused: this._fcitxFocused, focusRequestPending: this._fcitxPending});
+            fcitxFocused: this._fcitxFocused, focusRequestPending: this._fcitxPending,
+            focusProbe: this._fcitxProbeState});
     }
     hasPhysicalKeyboard() {
         return this._physicalKeyboardCount > 0;
@@ -172,6 +216,73 @@ export default class InputPolicy extends Extension {
             !this._manager.visible && !keyboard._keyboardRequested)
             this._manager.open(Main.layoutManager.focusIndex);
     }
+    // Fcitx exposes only context metadata here (program/frontend/focus), never
+    // input text. The callback receives null when the daemon is absent, the call
+    // timed out or it was cancelled; every caller fails closed in that case.
+    _debugInfo(timeout, callback) {
+        Gio.DBus.session.call('org.fcitx.Fcitx5', '/controller',
+            'org.fcitx.Fcitx.Controller1', 'DebugInfo', null,
+            new GLib.VariantType('(s)'), Gio.DBusCallFlags.NO_AUTO_START,
+            timeout, this._cancellable, (connection, result) => {
+                let info = null;
+                try {
+                    [info] = connection.call_finish(result).deep_unpack();
+                } catch (_error) { /* No daemon or a stale context. */ }
+                if (this._enabled)
+                    callback(info);
+            });
+    }
+    // GTK and Qt clients that set GTK_IM_MODULE=fcitx reach Fcitx through the im
+    // module's D-Bus frontend instead of Wayland text-input, so Mutter never
+    // reports a focus and Main.inputMethod.currentFocus stays null for them.
+    // Fcitx's own context focus flag is then the only sign of an active field.
+    _checkFcitxFocus() {
+        const window = global.display.focus_window;
+        if (!window || this.hasPhysicalKeyboard() || this._mode !== 'touch' ||
+            this._fcitxProbePending)
+            return;
+        // QQ keeps the stricter bridge below, which also requires the touched
+        // window; a second probe per touch would only duplicate that request.
+        const klass = window.get_wm_class()?.toLowerCase() ?? '';
+        if (['qq', 'linuxqq'].includes(klass))
+            return;
+        // The im module reports focus slightly after the touch, so retry a few
+        // times before giving up on this touch rather than dropping it at once.
+        const generation = this._touchGeneration;
+        if (this._fcitxProbeGen !== generation) {
+            this._fcitxProbeGen = generation;
+            this._fcitxProbeCount = 0;
+        }
+        this._fcitxProbePending = true;
+        this._debugInfo(400, info => {
+            this._fcitxProbePending = false;
+            let program = null;
+            for (const line of (info ?? '').split('\n')) {
+                const match = /IC \[[^\]]+\] program:(\S+).*focus:1/.exec(line);
+                if (match && match[1] !== 'gnome-shell') {
+                    program = match[1];
+                    break;
+                }
+            }
+            this._fcitxProbeState = {generation, program, answered: info !== null};
+            if (info === null || this._mode !== 'touch' ||
+                generation !== this._touchGeneration ||
+                window !== global.display.focus_window)
+                return;
+            if (program) {
+                this._handledTouchGeneration = generation;
+                this._openForTouch();
+                return;
+            }
+            if (this._manager.visible) {
+                this._handledTouchGeneration = generation;
+                this._manager.close();
+                return;
+            }
+            if (++this._fcitxProbeCount >= 6)
+                this._handledTouchGeneration = generation;
+        });
+    }
     _checkQqFocus() {
         const window = global.display.focus_window;
         const klass = window?.get_wm_class()?.toLowerCase() ?? '';
@@ -182,30 +293,21 @@ export default class InputPolicy extends Extension {
             return;
         const generation = this._touchGeneration;
         this._fcitxPending = true;
-        // Fcitx exposes only context metadata here (program/frontend/focus),
-        // not input text. State() alone can refer to a previously focused IC.
-        Gio.DBus.session.call('org.fcitx.Fcitx5', '/controller',
-            'org.fcitx.Fcitx.Controller1', 'DebugInfo', null,
-            new GLib.VariantType('(s)'), Gio.DBusCallFlags.NO_AUTO_START,
-            500, this._cancellable, (connection, result) => {
-                this._fcitxPending = false;
-                if (!this._enabled)
-                    return;
-                let focused = false;
-                try {
-                    const [info] = connection.call_finish(result).deep_unpack();
-                    focused = /(?:^|\n)\s*IC \[[^\]]+\] program:(?:gtk\d-im:)?(?:qq|linuxqq) frontend:\S+(?: cap:[0-9a-f]+)? focus:1(?:\n|$)/i.test(info);
-                } catch (_error) { /* No daemon or a stale context: fail closed. */ }
-                this._fcitxFocused = focused;
-                if (!focused || this._mode !== 'touch' ||
-                    generation !== this._touchGeneration ||
-                    generation <= this._handledTouchGeneration ||
-                    window !== global.display.focus_window ||
-                    GLib.get_monotonic_time() / 1000 - this._lastAppTouch > 1200)
-                    return;
-                this._handledTouchGeneration = generation;
-                this._openForTouch();
-            });
+        // State() alone can refer to a previously focused context, so only the
+        // per-context focus flag of this exact query is trusted.
+        this._debugInfo(500, info => {
+            this._fcitxPending = false;
+            const focused = /(?:^|\n)\s*IC \[[^\]]+\] program:(?:gtk\d-im:)?(?:qq|linuxqq) frontend:\S+(?: cap:[0-9a-f]+)? focus:1(?:\n|$)/i.test(info ?? '');
+            this._fcitxFocused = focused;
+            if (!focused || this._mode !== 'touch' ||
+                generation !== this._touchGeneration ||
+                generation <= this._handledTouchGeneration ||
+                window !== global.display.focus_window ||
+                GLib.get_monotonic_time() / 1000 - this._lastAppTouch > 1200)
+                return;
+            this._handledTouchGeneration = generation;
+            this._openForTouch();
+        });
     }
     _isSensitiveInput() {
         const purpose = Main.inputMethod.content_purpose;

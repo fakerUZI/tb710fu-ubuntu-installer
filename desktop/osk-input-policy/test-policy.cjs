@@ -21,7 +21,7 @@ const context = {
     GLib: {PRIORITY_DEFAULT: 0, SOURCE_CONTINUE: true, timeout_add: (_priority, _interval, callback) => { poll = callback; return 9; }, source_remove() {}, get_monotonic_time: () => now * 1000, VariantType: class {}, path_get_basename: p => p.split('/').at(-1), file_read_link: p => entries.get(p.split('/').at(-1)).link},
     Gio: {File: {new_for_path: path => ({load_contents() {const e = entries.get(path.match(/event\d+/)?.[0]); if (!e) throw Error('removed');return [true, Buffer.from(path.endsWith('/bustype') ? e.bus : e.keys)];}})}, Cancellable: class {cancel() {}}, DBusExportedObject: {wrapJSObject: () => ({export() {}, unexport() {}})}, DBusCallFlags: {NO_AUTO_START: 1}, DBus: {session: {call(...args) {pending.push(args[9]);}}}},
     TextDecoder,
-    Clutter: {InputDeviceType: types, EventType: {TOUCH_END: 30}, EVENT_PROPAGATE: 0, InputContentPurpose: {PASSWORD: 8, PIN: 9}}, Shell: {ActionMode: {LOCK_SCREEN: 4}},
+    Clutter: {InputDeviceType: types, EventType: {TOUCH_BEGIN: 29, TOUCH_UPDATE: 30, TOUCH_END: 31, TOUCH_CANCEL: 32}, EVENT_PROPAGATE: 0, InputContentPurpose: {PASSWORD: 8, PIN: 9}}, Shell: {ActionMode: {LOCK_SCREEN: 4}},
     Main: {keyboard: manager, extensionManager: {lookup: () => null}, layoutManager: {focusIndex: 0}, actionMode: 1, inputMethod: {content_purpose: 0, connect(_name, callback) { purposeChanged = callback; return 8; }, disconnect() {}}}, Extension: class {},
     global: {backend: {connect(_signal, callback) { listener = callback; return 1; }, disconnect() {}}, stage: {context: {get_backend: () => ({get_default_seat: () => seat})}, connect(_signal, callback) {captured = callback; return 2;}, disconnect() {}, get_event_actor: event => event.get_source()}, window_group: {contains: source => source === 'app'}, display: {focus_window: {get_wm_class: () => 'QQ'}}},
 };
@@ -47,9 +47,17 @@ assert.equal(closed, 2);
 
 const policy = new context.InputPolicy();
 policy.enable();
+const touch = (type, source, x, y) => ({type: () => type, get_source: () => source, get_coords: () => [x, y]});
 const tap = (source = 'app') => {
     now += 100;
-    captured(null, {type: () => 30, get_source: () => source});
+    captured(null, touch(29, source, 500, 400));
+    captured(null, touch(31, source, 500, 400));
+};
+const swipe = (source = 'app') => {
+    now += 100;
+    captured(null, touch(29, source, 500, 800));
+    captured(null, touch(30, source, 500, 600));
+    captured(null, touch(31, source, 500, 400));
 };
 const answer = info => {
     assert(pending.length, 'focus request is pending');
@@ -92,7 +100,48 @@ assert.equal(opened, before + 2, 'native focus-object changes are detected');
 context.Main.inputMethod.currentFocus = null;
 tap(); poll(); before = opened; policy.disable(); answer(focused);
 assert.equal(opened, before, 'disabled policy ignores pending replies');
+// Every GTK/Qt client that uses the fcitx im module reports no Wayland focus at
+// all, so the fcitx context flag has to drive the keyboard for them as well.
+const ime = new context.InputPolicy();
+ime.enable();
+const imeTap = () => { now += 100; captured(null, touch(29, 'app', 500, 400)); captured(null, touch(31, 'app', 500, 400)); };
+context.global.display.focus_window = {get_wm_class: () => 'Chromium'};
+before = opened;
+imeTap(); poll();
+assert.equal(pending.length, 1, 'a non-QQ app sends one fcitx probe per touch');
+answer('  IC [test] program:chromium frontend:dbus cap:1a focus:1\n');
+assert.equal(opened, before + 1, 'fcitx context focus opens the OSK without Wayland focus');
+assert.equal(JSON.parse(ime.Status()).focusProbe.program, 'chromium',
+    'Status reports the last fcitx probe without adding an input channel');
+// Scrolling is a focus-preserving gesture, so it must not be treated as a tap:
+// otherwise every swipe runs a probe and the OSK opens and closes in a loop.
+before = opened;
+swipe(); poll();
+assert.equal(pending.length, 0, 'a scroll gesture never probes the input method');
+assert.equal(opened, before, 'scrolling must not open the OSK');
+manager.visible = true;
+const hiddenByScroll = closed;
+swipe(); poll();
+assert.equal(closed, hiddenByScroll, 'scrolling must not hide an open OSK either');
+manager.visible = false;
+manager.visible = true;
+const hid = closed;
+imeTap(); poll();
+answer('  IC [test] program:chromium frontend:dbus cap:1a focus:0\n');
+assert.equal(closed, hid + 1, 'touching a non-editable area hides the OSK again');
+manager.visible = false;
+before = opened;
+imeTap(); poll();
+answer('  IC [test] program:chromium frontend:dbus cap:1a focus:0\n');
+assert.equal(opened, before, 'an unfocused context leaves a hidden OSK closed');
+context.global.display.focus_window = {get_wm_class: () => 'QQ'};
+imeTap(); poll();
+assert.equal(pending.length, 1, 'QQ keeps its single stricter bridge probe');
+answer(unfocused);
+context.global.display.focus_window = qq;
+ime.disable();
 console.log('OSK policy: native focus, QQ IBus touch, candidate exclusion, hide, stale response and keyboard suppression passed');
+console.log('OSK policy: fcitx context focus opens and closes the OSK for GTK/Qt clients without Wayland focus');
 
 const keyBits = ((1n << 28n) | (1n << 30n) | (1n << 44n) | (1n << 57n)).toString(16);
 assert(context.isExternalTypingKeyboard('0003', '../../devices/platform/usb/input/event80', keyBits));

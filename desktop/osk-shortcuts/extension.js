@@ -93,16 +93,36 @@ export default class OskShortcuts extends Extension {
         const keyboard = Main.keyboard.keyboardActor;
         if (!keyboard || !keyboard._keyboardController || this._keyboard === keyboard)
             return;
-        this._detach();
+        try {
+            this._detach();
+        } catch (error) {
+            // A rebuilt keyboard leaves disposed actors behind. Never let the
+            // cleanup abort the attach, or the toolbar stays gone until relogin.
+            logError(error, 'tb-osk-shortcuts: detach failed, forcing reattach');
+            this._keyboard = null;
+        }
         this._keyboard = keyboard;
+        // A rebuilt keyboard actor can leave an event source that is already
+        // gone; the native maybeHandleEvent then calls contains() on null every
+        // frame and floods the journal. Skip only the unresolvable case.
+        if (!Main.keyboard._tbMaybeHandleEvent) {
+            Main.keyboard._tbMaybeHandleEvent = Main.keyboard.maybeHandleEvent;
+            Main.keyboard.maybeHandleEvent = function (event) {
+                if (!global.stage.get_event_actor(event))
+                    return false;
+                return this._tbMaybeHandleEvent.call(this, event);
+            };
+        }
         this._toolbarLayoutKey = null;
         this._toolbarGroups = [];
         this._arrowRepeat = new ArrowRepeatManager(keyboard);
         this._shiftModifier = new TerminalShiftModifier(keyboard,
             Clutter.KEY_Shift_L, Clutter.InputContentPurpose.TERMINAL,
             layout => this._arrowRepeat.scan(layout),
-            [Clutter.InputContentPurpose.NORMAL, Clutter.InputContentPurpose.ALPHA,
-                Clutter.InputContentPurpose.URL, Clutter.InputContentPurpose.EMAIL],
+            // Only these keep GNOME's native numeric keypad; every other purpose
+            // is switched to the extended layout by TerminalShiftModifier.
+            [Clutter.InputContentPurpose.DIGITS, Clutter.InputContentPurpose.NUMBER,
+                Clutter.InputContentPurpose.PHONE],
             Main.inputMethod);
         const bar = new St.BoxLayout({
             style_class: 'tb-osk-shortcuts', x_expand: true,
@@ -745,7 +765,26 @@ export default class OskShortcuts extends Extension {
         this._keyboard?._aspectContainer.show();
         this._buttons.get('clipboard')?.remove_style_pseudo_class('checked');
     }
+    _terminalFocused() {
+        const window = global.display.focus_window;
+        if (!window)
+            return false;
+        let ident = '';
+        try {
+            ident = [window.get_wm_class(), window.get_gtk_application_id?.(),
+                window.get_sandboxed_app_id?.()].filter(Boolean).join(' ');
+        } catch (_error) {
+            return false;
+        }
+        return /terminal|console|ptyxis|kgx|kitty|alacritty|wezterm|foot/
+            .test(ident.toLowerCase());
+    }
+
     _send(entry) {
+        // Terminals bind paste to Ctrl+Shift+V; a plain Ctrl+V is quoted-insert.
+        if (entry.ctrl && !entry.shift && entry.key === Clutter.KEY_v &&
+            this._terminalFocused())
+            entry = {...entry, shift: true};
         if (entry.action === 'screenshot') {
             this._takeScreenshot();
             return;
@@ -801,8 +840,14 @@ export default class OskShortcuts extends Extension {
         if (keyboard && this._originalKeyboardOpen)
             keyboard.open = this._originalKeyboardOpen;
         this._originalKeyboardOpen = null;
-        if (keyboard && this._aspectWidthId)
-            keyboard._aspectContainer.disconnect(this._aspectWidthId);
+        if (keyboard && this._aspectWidthId) {
+            try {
+                keyboard._aspectContainer?.disconnect(this._aspectWidthId);
+            } catch (_error) {
+                // The AspectContainer was disposed together with an older
+                // keyboard actor; there is nothing left to disconnect.
+            }
+        }
         this._aspectWidthId = 0;
         if (keyboard && this._originalLanguageMenu)
             keyboard._popupLanguageMenu = this._originalLanguageMenu;
