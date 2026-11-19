@@ -1,0 +1,76 @@
+const fs = require('fs');
+const vm = require('vm');
+const assert = require('assert');
+const source = fs.readFileSync(`${__dirname}/shift-modifier.js`, 'utf8')
+    .replace('export class TerminalShiftModifier', 'globalThis.TerminalShiftModifier = class TerminalShiftModifier');
+const ctx = {};vm.createContext(ctx);vm.runInContext(source, ctx);
+const SHIFT = 0xffe1, LEFT = 0xff51, TAB = 0xff09, TERMINAL = 10;
+const events = [], seen = [], purposes = [], selectedLevels = [], disconnected = [];
+let fail = false, closed = 0;
+const controller = {purpose: TERMINAL,
+    keyvalPress(k) {if (fail && k === LEFT) throw Error('input failed');events.push(['down', k]);},
+    keyvalRelease(k) {events.push(['up', k]);}};
+const row = [{action: 'levelSwitch', iconName: 'osk-shift-symbolic', level: 'shift', width: 2},
+    {strings: ['z']}, {action: 'levelSwitch', iconName: 'osk-shift-symbolic', level: 'shift'}];
+const caps = [{action: 'levelSwitch', iconName: 'osk-caps-lock-symbolic', level: 'shift'}];
+const layout = {get_children: () => []};
+const keyboard = {_keyboardController: controller, _modifiers: new Set(), _modifierKeys: {},
+    _layers: {default: {}, shift: {}},
+    _setActiveLevel(level) {assert(this._layers[level], 'native setter cannot select a missing layer');selectedLevels.push(level);},
+    _addRowKeys(keys) {seen.push(keys);},
+    _updateLayout(_group, purpose) {purposes.push(purpose);this._addRowKeys(row, layout, true);},
+    _updateKeys() {this._addRowKeys(row, layout, true);},
+    close() {closed++;}, get_parent() {return true;},
+    _setModifierEnabled(k, enabled) {if (enabled) this._modifiers.add(k);else this._modifiers.delete(k);}};
+const originals = {add: keyboard._addRowKeys, level: keyboard._setActiveLevel, layout: keyboard._updateLayout, update: keyboard._updateKeys, close: keyboard.close,
+    press: controller.keyvalPress, release: controller.keyvalRelease};
+const ext = new ctx.TerminalShiftModifier(keyboard, SHIFT, TERMINAL, undefined, [0, 1, 6, 7], {disconnect: id => disconnected.push(id)});
+keyboard._layers = {default: {}};keyboard._setActiveLevel('shift');assert.equal(selectedLevels.at(-1), 'default');
+keyboard._surroundingTextId = 42;keyboard._updateKeys();assert.deepEqual(disconnected, [42]);assert.equal(keyboard._surroundingTextId, 0);
+keyboard._layers = {default: {}, shift: {}};keyboard._setActiveLevel('shift');assert.equal(selectedLevels.at(-1), 'shift');
+assert.equal(seen[0][0].action, 'modifier');assert.equal(seen[0][0].label, 'Shift');
+assert.equal(seen[0][0].keyval, SHIFT);assert.equal(seen[0][0].width, 2);
+assert.equal(seen[0][2], row[2], 'right size-switch key remains native');
+assert.equal(row[0].action, 'levelSwitch', 'do not mutate native layout definitions');
+keyboard._addRowKeys(caps, layout, true);assert.equal(seen.at(-1), caps, 'upper Caps remains intact');
+controller.purpose = 0;keyboard._addRowKeys(row, layout, true);
+assert.equal(seen.at(-1), row, 'normal input layout remains intact');controller.purpose = TERMINAL;
+controller.purpose = 0;keyboard._updateLayout('us', 0);
+assert.equal(purposes.at(-1), TERMINAL);assert.equal(seen.at(-1)[0].action, 'modifier');
+assert.equal(controller.purpose, 0, 'visual layout must not change the app input purpose');
+keyboard._updateLayout('us', 1);assert.equal(purposes.at(-1), TERMINAL);
+for (const purpose of [6, 7]) {
+    controller.purpose = purpose;keyboard._updateLayout('us', purpose);
+    assert.equal(purposes.at(-1), TERMINAL, 'URL/email use the same extended visual layout');
+    assert.equal(seen.at(-1)[0].action, 'modifier');assert.equal(controller.purpose, purpose);
+}
+for (const purpose of [2, 3, 4, 8, 9]) {
+    controller.purpose = purpose;keyboard._updateLayout('us', purpose);
+    assert.equal(purposes.at(-1), purpose, 'special-purpose layout stays native');
+    assert.equal(seen.at(-1), row);
+}
+controller.purpose = TERMINAL;
+keyboard._setModifierEnabled(SHIFT, true);
+for (const key of [LEFT, LEFT, TAB]) {controller.keyvalPress(key);controller.keyvalRelease(key);}
+assert.deepEqual(events, [LEFT, LEFT, TAB].flatMap(k => [['down', SHIFT], ['down', k], ['up', k], ['up', SHIFT]]));
+assert(keyboard._modifiers.has(SHIFT), 'arrows and Tab preserve the selected modifier');
+events.length = 0;
+// Native text commit already brackets the character with its modifier set.
+for (const k of [SHIFT, 97]) controller.keyvalPress(k);
+for (const k of [97, SHIFT]) controller.keyvalRelease(k);
+assert.deepEqual(events, [['down', SHIFT], ['down', 97], ['up', 97], ['up', SHIFT]], 'no duplicate Shift around text');
+events.length = 0;fail = true;
+assert.throws(() => controller.keyvalPress(LEFT), /input failed/);
+assert.deepEqual(events, [['down', SHIFT], ['up', SHIFT]], 'failed key cannot leave Shift pressed');fail = false;
+keyboard.close();assert.equal(closed, 1);assert(!keyboard._modifiers.has(SHIFT));
+events.length = 0;controller.keyvalPress(LEFT);controller.keyvalRelease(LEFT);
+assert.deepEqual(events, [['down', LEFT], ['up', LEFT]], 'plain key after clearing');
+keyboard._setModifierEnabled(SHIFT, true);keyboard._updateKeys();
+assert(!keyboard._modifiers.has(SHIFT), 'layout changes clear selected Shift');
+ext.destroy();
+assert.equal(keyboard._addRowKeys, originals.add);assert.equal(keyboard._updateKeys, originals.update);
+assert.equal(keyboard._updateLayout, originals.layout);
+assert.equal(keyboard._setActiveLevel, originals.level);
+assert.equal(keyboard.close, originals.close);assert.equal(controller.keyvalPress, originals.press);
+assert.equal(controller.keyvalRelease, originals.release);assert.equal(seen.at(-1), row);
+console.log('Unified normal/alpha/URL/email/terminal layout, special-purpose preservation, retained Caps, Shift arrows/Tab, native text and restoration passed');

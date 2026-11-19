@@ -1,0 +1,62 @@
+/* Shared toolbar follows the allocated letter grid in both orientations. */
+#keyboard .tb-osk-composition { spacing: 0; }
+#keyboard .tb-osk-preedit {
+    padding: 3px 14px 0; color: #b7d8ff;
+    font-size: 14px; font-weight: 500;
+}
+#keyboard .tb-osk-shortcuts {
+    padding: 7px 8px 9px;
+    border-radius: 12px;
+    background-color: #292c33;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+#keyboard .tb-osk-shortcut-groups { spacing: 8px; }
+#keyboard .tb-osk-shortcut-group { spacing: 4px; }
+#keyboard .tb-osk-action {
+    min-width: 40px; min-height: 32px; padding: 8px 10px;
+    border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.07);
+    background-color: #3b3f48; color: #edf0f7;
+    font-size: 16px; font-weight: 500;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+#keyboard .tb-osk-action:hover { background-color: #484d58; }
+#keyboard .tb-osk-action:active { background-color: #596171; border-color: rgba(255, 255, 255, 0.18); box-shadow: none; }
+#keyboard .tb-osk-action-primary { color: #ffffff; background-color: #3277ce; border-color: #4d91e8; }
+#keyboard .tb-osk-action-primary:hover { background-color: #3985df; }
+#keyboard .tb-osk-action-primary:active { background-color: #2462b0; }
+#keyboard .tb-osk-action-content { spacing: 6px; }
+#keyboard .tb-osk-action-icon { icon-size: 18px; }
+#keyboard .tb-osk-toolbar-narrow .tb-osk-action { min-width: 26px; padding: 6px 7px; font-size: 14px; }
+#keyboard .tb-osk-action-compact { min-width: 26px; }
+#keyboard .tb-osk-action-arrow { min-width: 24px; font-size: 19px; }
+#keyboard .tb-osk-action-tab { min-width: 34px; }
+#keyboard .tb-osk-action-screenshot { min-width: 28px; color: #c4dfef; }
+#keyboard .tb-osk-action:checked { background-color: #285a93; border-color: #5597e8; }
+#keyboard .tb-osk-language-toggle { min-width: 36px; font-weight: bold; }
+#keyboard .tb-osk-language-toggle:checked { background-color: #2e6858; border-color: #559983; }
+#keyboard .keyboard-key.tb-osk-language-key { font-size: 1.15em; font-weight: bold; }
+#keyboard .keyboard-key.tb-osk-language-chinese { background-color: #365b51; color: #d5ffef; }
+#keyboard .keyboard-key.tb-osk-shift-modifier { font-size: 24px; font-weight: 600; }
+#keyboard .keyboard-key.tb-osk-shift-modifier:latched { background-color: #3277ce; color: white; }
+#keyboard .tb-osk-clipboard-panel { padding: 8px 8px 12px; spacing: 10px; }
+#keyboard .tb-osk-clipboard-header { spacing: 8px; }
+#keyboard .tb-osk-clipboard-title { color: #edf0f7; font-weight: bold; font-size: 16px; }
+#keyboard .tb-osk-clipboard-list { spacing: 7px; }
+#keyboard .tb-osk-clipboard-scroll { min-height: 0; }
+#keyboard .tb-osk-clipboard-item {
+    padding: 12px 16px; border-radius: 10px; background-color: #3b3f48;
+    color: #edf0f7; font-size: 15px; border: 1px solid rgba(255, 255, 255, 0.06);
+}
+#keyboard .tb-osk-clipboard-item:hover { background-color: #484d58; }
+#keyboard .tb-osk-clipboard-item:active { background-color: #285a93; }
+#keyboard .tb-osk-clipboard-item-content { spacing: 14px; }
+#keyboard .tb-osk-clipboard-index { color: #92add0; min-width: 28px; }
+#keyboard .tb-osk-clipboard-empty { padding: 36px 10px; color: #aab1bf; font-size: 15px; }
+#keyboard .tb-osk-clipboard-image {
+    padding: 10px 12px; spacing: 12px; border-radius: 10px;
+    background-color: #3b3f48; border: 1px solid rgba(255, 255, 255, 0.06);
+}
+#keyboard .tb-osk-screenshot-preview { padding: 2px; border-radius: 7px; background-color: #22252b; }
+#keyboard .tb-osk-screenshot-details { spacing: 5px; }
+#keyboard .tb-osk-screenshot-title { color: #edf0f7; font-size: 15px; font-weight: bold; }
+#keyboard .tb-osk-screenshot-caption { color: #aab6ca; font-size: 12px; }

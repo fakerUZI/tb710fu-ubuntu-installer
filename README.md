@@ -13,3 +13,5 @@
 Kimpanel 修改继承 GPL-2.0-or-later，许可见 `desktop/kimpanel/COPYING`。NBD 服务器和部分启动工具源自 [TB710FU Arch Linux port](https://github.com/deinthoedoka/TB710FU-Archlinux)，遵循附带许可。发行文件包含硬件固件，其再分发许可需要核实。设备备份、个人数据、凭据、设备唯一标识和已停止的前摄实验不属于公开内容。
 
 镜像保留修复助手和 Google Chrome，排除原机浏览器用户资料、账户与缓存；QQ、WorkBuddy 和 FlClash 不包含在内。Chrome 和固件的再分发条件需要核实；参见 [Chrome 附加条款](https://www.google.com/chrome/terms/)和 [Google 服务条款](https://policies.google.com/terms)。
+
+本版本镜像中实际安装的屏幕键盘扩展源码见 `desktop/installed-20261119/`；主分支同时保留后续合并的扩展改动。
