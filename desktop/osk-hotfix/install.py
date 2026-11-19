@@ -54,10 +54,11 @@ def main():
         new = (HERE / 'files' / path).read_bytes()
         if digest(new) != row['after']:
             sys.exit(f'补丁校验失败：{path}')
-        if digest(old) == row['after']:
+        installed = digest(old)
+        if installed == row['after']:
             continue
-        if digest(old) != row['before']:
-            sys.exit(f'扩展版本不匹配：{path}。此补丁仅支持原版 0.3.0。')
+        if installed not in (row['before'], row.get('previous')):
+            sys.exit(f'扩展版本不匹配：{path}。此补丁支持原版 0.3.0 和已发布的屏幕键盘补丁。')
         changes.append((target, new, old, info))
     if not changes:
         print('补丁已安装。重新登录后生效。')

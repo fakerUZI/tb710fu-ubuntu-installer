@@ -1,3 +1,43 @@
+function alignSymbolRow(keys, shiftKeyval) {
+    const first = keys[0];
+    const last = keys.at(-1);
+    if (keys.length === 11 && last.action === 'delete') {
+        return [{label: 'Tab', keyval: '0xff09'}, ...keys.slice(0, -1), {...last, width: 2}];
+    }
+    if (keys.length === 10 && last.iconName === 'osk-enter-symbolic') {
+        // The comma moves here from the space row, keeping punctuation full-size.
+        return [{label: 'Esc', keyval: '0xff1b'}, {...first, leftOffset: 0},
+            ...keys.slice(1, -1), {strings: [',']}, last];
+    }
+    if (keys.length === 9 && ['opt', 'opt+shift'].includes(first.level) &&
+        first.action === 'levelSwitch' && last.action === 'levelSwitch' && first.level === last.level) {
+        // Only one symbol-page switch is needed. Shift, period and Up match the letter layout.
+        return [{label: 'Shift', action: 'modifier', keyval: shiftKeyval, width: 2},
+            ...keys.slice(1, -1), {strings: ['.', '…']},
+            {iconName: 'go-up-symbolic', keyval: '0xff52'}, {...last, width: 2}];
+    }
+    const [, left, right, space, comma, period, emoji, language, hide] = keys;
+    if (keys.length === 9 && first.action === 'levelSwitch' && first.level === 'default' &&
+        space.strings?.[0] === ' ' && comma.strings?.[0] === ',' && period.strings?.[0] === '.' &&
+        emoji.action === 'emoji' && language.action === 'languageMenu' && hide.action === 'hide') {
+        return [
+            {label: 'Ctrl', keyval: '0xffe3', action: 'modifier'},
+            {...first, width: 1},
+            {label: 'Alt', keyval: '0xffe9', action: 'modifier'},
+            left,
+            {...space, width: 2},
+            right,
+            emoji,
+            language,
+            {iconName: 'go-previous-symbolic', keyval: '0xff51'},
+            {iconName: 'go-down-symbolic', keyval: '0xff54'},
+            {iconName: 'go-next-symbolic', keyval: '0xff53'},
+            hide,
+        ];
+    }
+    return keys;
+}
+
 // Use the extended layout for every text purpose, not only terminals.
 // Keep its upper Caps key and replace only the lower-left Shift.
 // Native modifier registration supplies touch handling and the latched state.
@@ -87,33 +127,8 @@ export class TerminalShiftModifier {
                     }
                 }
             }
-            // Both GNOME symbol pages end in an ABC/Hide row. Insert navigation
-            // above it without taking away any symbols or affecting numeric pads.
-            if (layout.mode === 'locked' &&
-                keys.some(key => key.action === 'levelSwitch' && key.level === 'default') &&
-                keys.some(key => key.action === 'hide')) {
-                // GNOME's grid uses integer half-key units.
-                const columns = keys.reduce((sum, key) =>
-                    sum + Math.round(((key.width ?? 1) + (key.leftOffset ?? 0)) * 2), 0);
-                const navigation = [
-                    {label: 'Esc', keyval: '0xff1b'},
-                    {label: 'Tab', keyval: '0xff09'},
-                    {label: 'Ctrl', keyval: '0xffe3', action: 'modifier'},
-                    {label: 'Shift', keyval: shiftKeyval, action: 'modifier'},
-                    {label: 'Alt', keyval: '0xffe9', action: 'modifier'},
-                    {iconName: 'go-previous-symbolic', keyval: '0xff51'},
-                    {iconName: 'go-up-symbolic', keyval: '0xff52'},
-                    {iconName: 'go-down-symbolic', keyval: '0xff54'},
-                    {iconName: 'go-next-symbolic', keyval: '0xff53'},
-                ];
-                const baseWidth = Math.max(1, Math.floor(columns / navigation.length));
-                const extra = columns % navigation.length;
-                navigation.forEach((key, index) => {
-                    key.width = (baseWidth + (index < extra ? 1 : 0)) / 2;
-                });
-                extension._addRowKeys.call(this, navigation, layout, emojiVisible);
-                layout.appendRow();
-            }
+            if (layout.mode === 'locked')
+                keys = alignSymbolRow(keys, shiftKeyval);
             extension._addRowKeys.call(this, keys, layout, emojiVisible);
             for (const key of layout.get_children()) {
                 if (key.keyButton?.get_label() === 'Shift') {

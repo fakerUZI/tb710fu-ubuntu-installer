@@ -90,22 +90,50 @@ assert.equal(bottom.reduce((sum, key) => sum + (key.width ?? 1), 0), 13,
 assert.equal(bottom.find(key => key.strings?.[0] === ' ').width, 3,
     'the space bar gives one column to the injected Alt');
 assert.deepEqual(row, native, 'the native bottom-row definition is not mutated');
-const symbolBottom = [{action: 'levelSwitch', level: 'default', label: 'ABC', width: 1.5},
-    {strings: ['_']}, {strings: [' '], width: 3}, {action: 'hide'}];
-let addedRows = 0;
-const symbolLayout = {mode: 'locked', appendRow() {addedRows++;}, get_children: () => []};
-keyboard._addRowKeys(symbolBottom, symbolLayout, true);
-assert.equal(addedRows, 1);
-const navigation = seen.at(-2);
-assert.equal(Array.from(navigation, key => Number(key.keyval)).join(','),
-    [0xff1b, TAB, 0xffe3, SHIFT, 0xffe9, LEFT, 0xff52, 0xff54, 0xff53].join(','));
-assert.equal(Array.from(navigation.filter(key => !key.action), key => parseInt(key.keyval, 16)).join(','),
-    [0xff1b, TAB, LEFT, 0xff52, 0xff54, 0xff53].join(','), 'GNOME parses raw keyvals in base 16');
-assert(navigation.every(key => Number.isInteger(key.width * 2)), 'keys align to the GNOME grid');
-assert.equal(navigation.reduce((total, key) => total + key.width, 0), 6.5);
-assert.equal(seen.at(-1), symbolBottom, 'symbols and ABC stay on their native row');
-keyboard._addRowKeys(symbolBottom, layout, true);
-assert.equal(addedRows, 1, 'unlocked layout gains no extra row');
+const symbolLayout = {mode: 'locked', get_children: () => []};
+const positions = new Map();
+for (const [toggleLabel, toggleLevel, punctuation] of [
+    ['=/<', 'opt+shift', ['_', '/']], ['?123', 'opt', ['<', '>']],
+]) {
+    const toggle = {action: 'levelSwitch', level: toggleLevel, label: toggleLabel};
+    const makeKeys = characters => Array.from(characters, value => ({strings: [value]}));
+    const rows = [
+        [...makeKeys('1234567890'), {action: 'delete', width: 1.5}],
+        [{strings: ['@'], leftOffset: 0.5}, ...makeKeys('#$%&-+()'),
+            {iconName: 'osk-enter-symbolic', width: 2}],
+        [{...toggle, width: 1.5}, ...makeKeys(['*', '"', "'", ':', ';', '!', '?']), {...toggle, width: 3}],
+        [{action: 'levelSwitch', level: 'default', label: 'ABC', width: 1.5},
+            ...makeKeys(punctuation), {strings: [' '], width: 3}, {strings: [',']}, {strings: ['.', '…']},
+            {action: 'emoji'}, {action: 'languageMenu'}, {action: 'hide'}],
+    ];
+    const original = JSON.stringify(rows);
+    const start = seen.length;
+    rows.forEach(keys => keyboard._addRowKeys(keys, symbolLayout, true));
+    const rendered = seen.slice(start);
+    assert.equal(rendered.length, 4, 'keep the four rows used for letter entry');
+    assert.equal(JSON.stringify(rows), original, 'native model stays intact');
+    const strings = keys => keys.flatMap(key => key.strings ?? []);
+    assert.deepEqual(rows.flatMap(strings).sort(), rendered.flatMap(strings).sort(),
+        'keep all symbols and long-press variants');
+    rendered.forEach((keys, rowIndex) => {
+        let column = 0;
+        keys.forEach(key => {
+            column += key.leftOffset ?? 0;
+            positions.set(key.label ?? key.iconName, [rowIndex, column]);
+            column += key.width ?? 1;
+        });
+        assert.equal(column, 13, 'use the letter keyboard width');
+    });
+    for (const [name, position] of [
+        ['Tab', [0, 0]], ['Esc', [1, 0]], ['Shift', [2, 0]], ['go-up-symbolic', [2, 10]],
+        ['Ctrl', [3, 0]], ['ABC', [3, 1]], ['Alt', [3, 2]],
+        ['go-previous-symbolic', [3, 9]], ['go-down-symbolic', [3, 10]], ['go-next-symbolic', [3, 11]],
+        [toggleLabel, [2, 11]],
+    ]) assert.deepEqual(positions.get(name), position);
+    assert.equal(parseInt(rendered[0][0].keyval, 16), TAB, 'GNOME reads raw keyvals in base 16');
+    keyboard._addRowKeys(rows[0], layout, true);
+    assert.equal(seen.at(-1), rows[0], 'unlocked layout stays intact');
+}
 row = native.map(key => ({...key}));
 ext.destroy();
 assert.equal(keyboard._addRowKeys, originals.add);assert.equal(keyboard._updateKeys, originals.update);
