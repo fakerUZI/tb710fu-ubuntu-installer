@@ -66,7 +66,9 @@ chroot "$d" apt-get clean
     sanitize=patch_once(sanitize,apt_block,'')
     # Install verified shared extension rather than copying the user's home.
     marker='install -m 755 "$inputs/tb-install-single.sh" "$d/usr/local/sbin/tb-install-single"'
-    additions='''install -d -m 755 "$d/usr/share/gnome-shell/extensions/tb-android-window-defaults@tb710fu"
+    additions='''install -D -m 755 "$inputs/tb710fu-update.sh" "$d/usr/local/sbin/tb710fu-update"
+install -D -m 644 "$inputs/tb710fu-update.desktop" "$d/usr/share/applications/tb710fu-update.desktop"
+install -d -m 755 "$d/usr/share/gnome-shell/extensions/tb-android-window-defaults@tb710fu"
 for name in extension.js navigation.js metadata.json stylesheet.css; do install -m 644 "$inputs/window-$name" "$d/usr/share/gnome-shell/extensions/tb-android-window-defaults@tb710fu/$name"; done
 python3 - "$d/etc/dconf/db/local.d/00-tb710fu" <<'PYEXT'
 import ast,sys
@@ -108,6 +110,7 @@ def prepare_inputs(folder, base, remote):
       '95-tb710fu-playback-clock.conf':PREP/'generic-user/95-tb710fu-playback-clock.conf',
       'droidloom-launch':PREP/'generic-user/droidloom-launch','droidloom-fix-launchers':PREP/'generic-user/droidloom-fix-launchers',
       'droidloom-watch-launchers':PREP/'generic-user/droidloom-watch-launchers','droidloom-watch-launchers.service':PREP/'generic-user/droidloom-watch-launchers.service',
+      'tb710fu-update.sh':SINGLE/'ubuntu/tb710fu-update.sh','tb710fu-update.desktop':SINGLE/'ubuntu/tb710fu-update.desktop',
       'merge_accounts.py':SINGLE/'merge_accounts.py','validate_preserve_root.py':SINGLE/'validate_preserve_root.py',
       'tb-installer.service':SINGLE/'tb-installer.service','catalog-seed.json':PREP/'generic-user/catalog-seed.json',
     }

@@ -4,6 +4,22 @@
 
 有两种安装模式：安卓首次安装或清空重装会删除目标 userdata/arch 分区的全部内容；现有 Ubuntu 覆盖模式支持受限制的 arch ext4 布局，尝试保留账户、/home 下的个人文件和用户设置，系统文件及部分系统设置可能被替换。它不支持保留安卓、调整安卓分区大小、独立 /home 或不兼容账户。保留模式在检查文件系统之前先写入临时 boot_a，如果检查失败可能需要恢复启动镜像；请先备份。
 
+## 已运行 Ubuntu 的用户
+
+在 TB710FU 的 Ubuntu 26.04 中，可以直接更新已安装的软件包。打开终端，在下载目录运行下面的命令。第一条预览本机索引中的更新，第二条刷新索引并让你在终端确认实际更新计划。
+
+```bash
+bash tb710fu-update.sh --check
+sudo bash tb710fu-update.sh --apply
+```
+
+更新使用本机已配置的 APT 软件源，保留现有账户、家目录和用户设置。APT 保留修改过的配置文件，不卸载已安装的软件包。TB710FU 专用内核、固件及硬件适配请通过平板上的修复助手更新。这个入口适用于 Ubuntu 26.04 内的日常更新。
+
+- [下载 Ubuntu 原地更新脚本](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/download/ubuntu-update-v1/tb710fu-update.sh)
+- [Ubuntu 软件包管理说明](https://ubuntu.com/server/docs/how-to/software/package-management/)
+
+## Windows 安装
+
 需要已解锁的 Bootloader、fastboot 驱动、Windows 本地磁盘至少 40 GiB 空闲及可靠的数据线。不要重锁 Bootloader。从 Releases 下载启动包，在 Windows 解压并运行 `windows/install.cmd`。按提示选择模式并输入 ERASE 或 KEEP。镜像分片联网下载并校验；安装完成后重启 Ubuntu。不要公开安装工作目录。
 
 系统包含 200% 默认缩放、自定义电源键、皮套背光、输入法和后摄适配。账户名通过活动会话识别。启动镜像使用经核对的 20261118 TB710FU 内核；[内核发布与源码](https://github.com/fakerUZI/tb710fu-repair-catalog/releases/tag/kernel-20261118)。本版本 Windows 安装和覆盖安装尚待实机确认。

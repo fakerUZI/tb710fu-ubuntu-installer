@@ -21,6 +21,8 @@ class BuilderTests(unittest.TestCase):
         self.assertNotIn('workbuddy google-chrome-stable flclash',scripts[1])
         self.assertIn('--exclude=/etc/opt/chrome',scripts[0])
         self.assertIn('--exclude=/etc/opt/chrome',scripts[1])
+        self.assertIn('/usr/local/sbin/tb710fu-update',scripts[1])
+        self.assertIn('/usr/share/applications/tb710fu-update.desktop',scripts[1])
         self.assertIn('result_dir=/var/tmp/tb-packager-'+'a'*32,scripts[3])
         self.assertIn('"$result_dir/payload.img.zst"',scripts[3])
         self.assertNotIn('"$inputs/payload.img.zst"',scripts[3])

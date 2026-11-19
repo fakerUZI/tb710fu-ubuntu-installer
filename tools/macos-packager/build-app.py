@@ -19,7 +19,7 @@ inputs=[
  'ubuntu-tb710fu/offline-prep/osk-backspace-fallback/extension.js','ubuntu-tb710fu/offline-prep/osk-backspace-fallback/metadata.json',
  *['ubuntu-tb710fu/offline-prep/android-window-controls/'+n for n in ('extension.js','navigation.js','metadata.json','stylesheet.css')],
  *['ubuntu-tb710fu/release-prep/generic-user/'+n for n in ('catalog-seed.json','95-tb710fu-playback-clock.conf','droidloom-launch','droidloom-fix-launchers','droidloom-watch-launchers','droidloom-watch-launchers.service')],
- *['ubuntu-tb710fu/release-prep/single-installer/'+n for n in ('tb-install-single.sh','tb-installer.service','merge_accounts.py','validate_preserve_root.py','payload_parts.py','README-DEV.zh-CN.txt','nbdserver/LICENSE','windows/install.cmd','windows/install.ps1')],
+ *['ubuntu-tb710fu/release-prep/single-installer/'+n for n in ('tb-install-single.sh','tb-installer.service','merge_accounts.py','validate_preserve_root.py','payload_parts.py','README-DEV.zh-CN.txt','nbdserver/LICENSE','windows/install.cmd','windows/install.ps1','ubuntu/tb710fu-update.sh','ubuntu/tb710fu-update.desktop')],
  'ubuntu-tb710fu/artifacts/kernel-20261118-release/ubuntu-kernel-upgrade-20261118/boot.img',
  'ubuntu-tb710fu/artifacts/ubuntu-release-20261116/prior-install-single.img','ubuntu-tb710fu/artifacts/ubuntu-release-20261116/prior-nbdserver.exe',
  *['ubuntu-tb710fu/sources/TB710FU-Archlinux/build/rom/windows/tools/'+n for n in ('fastboot.exe','AdbWinApi.dll','AdbWinUsbApi.dll','zstd.exe','NOTICE-platform-tools.txt','LICENSE-zstd.txt')],

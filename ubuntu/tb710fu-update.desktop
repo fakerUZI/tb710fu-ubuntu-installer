@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Ubuntu Updates
+Name[zh_CN]=更新 Ubuntu
+Comment=Update installed Ubuntu packages
+Comment[zh_CN]=更新已安装的 Ubuntu 系统软件包
+Exec=/usr/bin/sudo /usr/local/sbin/tb710fu-update --apply
+Icon=system-software-update
+Terminal=true
+Categories=System;Settings;
