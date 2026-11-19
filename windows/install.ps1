@@ -34,7 +34,7 @@ if (Test-Path -LiteralPath $bundledPayload -PathType Leaf) {
     throw 'Payload is missing and no download sources are specified.'
 }
 $baseline = (Get-Item -LiteralPath (Join-Path $root 'boot\boot-final.img')).FullName
-$baselineHash = 'b2c5db7b73afebf6b83a0b786000e768186c08e27daa6a8907bf24ff5d61bda2'
+$baselineHash = 'd83ee187bce60b30c2f28c177b3ab158ea96e5688547e06d3dd4d7a7ed1d6e10'
 if ((Get-Item -LiteralPath $baseline).Length -ne 100663296 -or (Get-FileHash -Algorithm SHA256 -LiteralPath $baseline).Hash.ToLowerInvariant() -cne $baselineHash) { throw 'Boot image does not match the verified Ubuntu menu variant.' }
 $fastboot = Join-Path $PSScriptRoot 'tools\fastboot.exe'
 $zstd = Join-Path $PSScriptRoot 'tools\zstd.exe'

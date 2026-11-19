@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Power short press toggles the screen; long press requests shutdown; lid closure locks.
+"""Power short press locks before blanking, and wakes the locked screen.
 
 用户级修正版（原文件 /usr/local/bin/tb-gnome-power-button.py 只读）。
 
@@ -40,20 +40,36 @@ def call(*args):
 
 
 def lock():
-    call('org.gnome.ScreenSaver', '/org/gnome/ScreenSaver', 'org.gnome.ScreenSaver', 'Lock')
+    """Confirm the graphical session lock without waiting for a lit curtain.
 
-
-def ensure_locked():
-    """Keep short press as a lock operation when the session is unlocked."""
-    try:
-        result = subprocess.run(
+    GNOME's ScreenSaver.Lock reply waits for lock-screen-shown; on an already
+    locked/off display that signal may never recur. logind's Lock signal calls
+    the same GNOME lock path, then we verify its actual state on both buses.
+    """
+    display = subprocess.run(
+        ('loginctl', 'show-user', str(os.getuid()), '-p', 'Display', '--value'),
+        timeout=2, check=True, capture_output=True, text=True).stdout.strip()
+    if not display:
+        raise RuntimeError('No graphical session found; lock was not confirmed')
+    def confirmed():
+        active = subprocess.run(
             ('busctl', '--user', 'call', 'org.gnome.ScreenSaver',
              '/org/gnome/ScreenSaver', 'org.gnome.ScreenSaver', 'GetActive'),
-            timeout=2, capture_output=True, text=True, check=True)
-        if result.stdout.strip() != 'b true':
-            lock()
-    except (OSError, subprocess.SubprocessError) as exc:
-        print('lock state check failed:', exc, flush=True)
+            timeout=2, check=True, capture_output=True, text=True).stdout.strip()
+        locked = subprocess.run(
+            ('loginctl', 'show-session', display, '-p', 'LockedHint', '--value'),
+            timeout=2, check=True, capture_output=True, text=True).stdout.strip()
+        return active == 'b true' and locked == 'yes'
+    if confirmed():
+        return
+    subprocess.run(('loginctl', 'lock-session', display), timeout=3, check=True,
+                   capture_output=True, text=True)
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        if confirmed():
+            return
+        time.sleep(.05)
+    raise RuntimeError('GNOME did not confirm a locked session')
 
 
 def backlight_power(action):
@@ -86,16 +102,18 @@ def panel_is_off():
 
 
 def short_press():
-    """按真实状态切换，一次按键一个动作，不再依赖总是为 0 的 PowerSaveMode。"""
+    """Lock before switching off; powering on never requests an unlock."""
     try:
-        if panel_is_off():
+        was_off = panel_is_off()
+        lock()
+        if was_off:
             set_power_save(0)
             backlight_power('on')
         else:
-            ensure_locked()
             set_power_save(3)
             backlight_power('off')
-    except (OSError, subprocess.SubprocessError) as exc:
+        print('tb-power-key: locked screen ' + ('on' if was_off else 'off'), flush=True)
+    except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
         print('power button action failed:', exc, flush=True)
 
 
@@ -136,7 +154,7 @@ def main():
                 break
         except (OSError, ValueError):
             continue
-    print('tb-power-key: ready (dpms judge, ver 2)', flush=True)
+    print('tb-power-key: ready (confirmed lock, ver 3)', flush=True)
     pressed = None
     long_done = False
     while True:

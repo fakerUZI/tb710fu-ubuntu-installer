@@ -21,7 +21,7 @@ nonce=${BASH_REMATCH[1]}
 expected=${BASH_REMATCH[2]}
 mode=${BASH_REMATCH[3]}
 # Current verified kernel/DT is derived from the original Ubuntu baseline.
-[ "$expected" = b2c5db7b73afebf6b83a0b786000e768186c08e27daa6a8907bf24ff5d61bda2 ] || fail 'boot image does not match the verified Ubuntu kernel'
+[ "$expected" = d83ee187bce60b30c2f28c177b3ab158ea96e5688547e06d3dd4d7a7ed1d6e10 ] || fail 'boot image does not match the verified Ubuntu kernel'
 boot_image=/run/tb710fu-final-boot.img
 [ ! -e "$boot_image" ] || fail 'temporary boot image already exists'
 umask 077
