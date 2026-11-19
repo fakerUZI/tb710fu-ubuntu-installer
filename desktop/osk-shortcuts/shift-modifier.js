@@ -60,6 +60,7 @@ function alignSymbolRow(keys, shiftKeyval, chineseSymbols) {
     if (keys.length === 9 && first.action === 'levelSwitch' && first.level === 'default' &&
         space.strings?.[0] === ' ' && comma.strings?.[0] === ',' && period.strings?.[0] === '.' &&
         emoji.action === 'emoji' && language.action === 'languageMenu' && hide.action === 'hide') {
+        const symbol = left.strings?.[0] === '<' ? '±' : '=';
         return [
             {label: 'Ctrl', keyval: '0xffe3', action: 'modifier'},
             {...first, width: 1},
@@ -68,7 +69,7 @@ function alignSymbolRow(keys, shiftKeyval, chineseSymbols) {
             {...space, width: 2},
             right,
             emoji,
-            language,
+            {strings: [symbol]},
             {iconName: 'go-previous-symbolic', keyval: '0xff51'},
             {iconName: 'go-down-symbolic', keyval: '0xff54'},
             {iconName: 'go-next-symbolic', keyval: '0xff53'},

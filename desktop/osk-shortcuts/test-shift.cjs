@@ -115,7 +115,9 @@ for (const [toggleLabel, toggleLevel, punctuation] of [
     assert.equal(rendered.length, 4, 'keep the four rows used for letter entry');
     assert.equal(JSON.stringify(rows), original, 'native model stays intact');
     const strings = keys => keys.flatMap(key => key.strings ?? []);
-    const extra = advanced ? ['≤', '≥', '≠'] : [];
+    const extra = advanced ? ['≤', '≥', '≠', '±'] : ['='];
+    assert.equal(rendered[3][7].strings[0], advanced ? '±' : '=');
+    assert(!rendered[3].some(key => key.action === 'languageMenu'));
     assert.deepEqual([...rows.flatMap(strings), ...extra].sort(), rendered.flatMap(strings).sort(),
         'keep all symbols and long-press variants');
     if (advanced) {

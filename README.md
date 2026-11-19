@@ -6,9 +6,9 @@
 
 ## 0.3.0 屏幕键盘补丁
 
-修复解锁或离开密码框后中文候选消失的问题，符号键盘保留四排，Tab、Shift、Ctrl、Alt 和方向键与中英文主键盘对齐。原 Esc 位置的「中符」「英符」用于切换两套标点。点右侧「⇧ []{}|」可打开第二页，直接输入括号、竖线和 ≤、≥、≠。原版 0.3.0 和已安装早期版本补丁的用户可直接在 Ubuntu 内更新，保留账户和个人文件。
+修复解锁或离开密码框后中文候选消失的问题，符号键盘保留四排，Tab、Shift、Ctrl、Alt 和方向键与中英文主键盘对齐。原 Esc 位置的「中符」「英符」用于切换两套标点。点右侧「⇧ []{}|」可打开第二页，直接输入括号、竖线和 ≤、≥、≠。符号页底排的语言键已替换为第一页的「=」和第二页的「±」。原版 0.3.0 和已安装早期版本补丁的用户可直接在 Ubuntu 内更新，保留账户和个人文件。
 
-- [下载屏幕键盘补丁](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/download/v0.3.0/TB710FU-v0.3.0-OSK-Hotfix-r4.zip)
+- [下载屏幕键盘补丁](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/download/v0.3.0/TB710FU-v0.3.0-OSK-Hotfix-r5.zip)
 - [补丁安装说明](desktop/osk-hotfix/README.md)
 
 ## 从官方 0.1／0.2 迁移到 0.3
