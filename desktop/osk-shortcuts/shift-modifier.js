@@ -87,6 +87,33 @@ export class TerminalShiftModifier {
                     }
                 }
             }
+            // Both GNOME symbol pages end in an ABC/Hide row. Insert navigation
+            // above it without taking away any symbols or affecting numeric pads.
+            if (layout.mode === 'locked' &&
+                keys.some(key => key.action === 'levelSwitch' && key.level === 'default') &&
+                keys.some(key => key.action === 'hide')) {
+                // GNOME's grid uses integer half-key units.
+                const columns = keys.reduce((sum, key) =>
+                    sum + Math.round(((key.width ?? 1) + (key.leftOffset ?? 0)) * 2), 0);
+                const navigation = [
+                    {label: 'Esc', keyval: '0xff1b'},
+                    {label: 'Tab', keyval: '0xff09'},
+                    {label: 'Ctrl', keyval: '0xffe3', action: 'modifier'},
+                    {label: 'Shift', keyval: shiftKeyval, action: 'modifier'},
+                    {label: 'Alt', keyval: '0xffe9', action: 'modifier'},
+                    {iconName: 'go-previous-symbolic', keyval: '0xff51'},
+                    {iconName: 'go-up-symbolic', keyval: '0xff52'},
+                    {iconName: 'go-down-symbolic', keyval: '0xff54'},
+                    {iconName: 'go-next-symbolic', keyval: '0xff53'},
+                ];
+                const baseWidth = Math.max(1, Math.floor(columns / navigation.length));
+                const extra = columns % navigation.length;
+                navigation.forEach((key, index) => {
+                    key.width = (baseWidth + (index < extra ? 1 : 0)) / 2;
+                });
+                extension._addRowKeys.call(this, navigation, layout, emojiVisible);
+                layout.appendRow();
+            }
             extension._addRowKeys.call(this, keys, layout, emojiVisible);
             for (const key of layout.get_children()) {
                 if (key.keyButton?.get_label() === 'Shift') {

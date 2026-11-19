@@ -12,6 +12,23 @@ import {TerminalShiftModifier} from './shift-modifier.js';
 import {ArrowRepeatManager} from './arrow-repeat.js';
 import {CandidateRow} from './candidate-row.js';
 
+// Mutter can retain PASSWORD after a native field loses focus. Fcitx's
+// im-module sends its own candidate table without a Mutter text-input focus.
+function hasSensitiveNativeFocus() {
+    const {content_purpose: purpose, currentFocus: focus} = Main.inputMethod;
+    const {PASSWORD, PIN} = Clutter.InputContentPurpose;
+    if (purpose !== PASSWORD && (PIN === undefined || purpose !== PIN))
+        return false;
+    if (!focus)
+        return false;
+    try {
+        return focus.is_focused?.() !== false;
+    } catch {
+        return true;
+    }
+}
+
+
 const SHARED_ROW_HEIGHT = 80;
 
 const GROUPS = [
@@ -293,10 +310,8 @@ export default class OskShortcuts extends Extension {
         this._refreshComposition();
     }
     _refreshComposition() {
-        const purpose = Main.inputMethod.content_purpose;
-        const sensitive = purpose === Clutter.InputContentPurpose.PASSWORD ||
-            purpose === Clutter.InputContentPurpose.PIN ||
-            Main.actionMode === Shell.ActionMode.LOCK_SCREEN;
+        const sensitive = Main.sessionMode?.isLocked ||
+            Main.actionMode === Shell.ActionMode.LOCK_SCREEN || hasSensitiveNativeFocus();
         this._compositionText = sensitive ? '' :
             (this._showPreedit ? this._preedit : this._showAuxPreedit ? this._auxPreedit : '');
         if (this._preeditLabel) {

@@ -13,6 +13,23 @@ import {KimIndicator} from './indicator.js';
 import {KimMenu} from './menu.js';
 import * as Lib from './lib.js';
 
+// Mutter can retain PASSWORD after a native field loses focus. Fcitx's
+// im-module sends its own candidate table without a Mutter text-input focus.
+function hasSensitiveNativeFocus() {
+    const {content_purpose: purpose, currentFocus: focus} = Main.inputMethod;
+    const {PASSWORD, PIN} = Clutter.InputContentPurpose;
+    if (purpose !== PASSWORD && (PIN === undefined || purpose !== PIN))
+        return false;
+    if (!focus)
+        return false;
+    try {
+        return focus.is_focused?.() !== false;
+    } catch {
+        return true;
+    }
+}
+
+
 var kimpanel = null;
 
 const KimpanelIface = '<node> \
@@ -305,21 +322,20 @@ class Kimpanel extends GObject.Object {
     }
 
     updateInputPanel() {
-        let inputpanel = this.inputpanel;
+        const inputpanel = this.inputpanel;
+        const sensitive = Main.sessionMode?.isLocked ||
+            Main.actionMode === Shell.ActionMode.LOCK_SCREEN || hasSensitiveNativeFocus();
 
-        this.showAux ? inputpanel.setAuxText(this.aux) : inputpanel.hideAux();
-        this.showPreedit ? inputpanel.setPreeditText(this.preedit, this.pos)
-                         : inputpanel.hidePreedit();
+        !sensitive && this.showAux ? inputpanel.setAuxText(this.aux) : inputpanel.hideAux();
+        !sensitive && this.showPreedit ? inputpanel.setPreeditText(this.preedit, this.pos)
+                                       : inputpanel.hidePreedit();
 
-        this.inputpanel.setLookupTable(this.label, this.table,
-                                       this.showLookupTable);
-        this.inputpanel.setLookupTableCursor(this.cursor);
-        this.inputpanel.updatePosition();
+        inputpanel.setLookupTable(sensitive ? [] : this.label, sensitive ? [] : this.table,
+            !sensitive && this.showLookupTable);
+        if (!sensitive)
+            inputpanel.setLookupTableCursor(this.cursor);
+        inputpanel.updatePosition();
         // TB710FU: native touch candidate row
-        const purpose = Main.inputMethod.content_purpose;
-        const sensitive = purpose === Clutter.InputContentPurpose.PASSWORD ||
-            purpose === Clutter.InputContentPurpose.PIN ||
-            Main.actionMode === Shell.ActionMode.LOCK_SCREEN;
         const shortcuts = Main.extensionManager.lookup('tb-osk-shortcuts@tb710fu')?.stateObj;
         // TB710FU: stable five-slot candidates, one owner sizes before display.
         if (typeof shortcuts?.setCandidateTable === 'function') {

@@ -5,6 +5,23 @@ import Gio from 'gi://Gio';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+// Mutter can retain PASSWORD after a native field loses focus. Fcitx's
+// im-module sends its own candidate table without a Mutter text-input focus.
+function hasSensitiveNativeFocus() {
+    const {content_purpose: purpose, currentFocus: focus} = Main.inputMethod;
+    const {PASSWORD, PIN} = Clutter.InputContentPurpose;
+    if (purpose !== PASSWORD && (PIN === undefined || purpose !== PIN))
+        return false;
+    if (!focus)
+        return false;
+    try {
+        return focus.is_focused?.() !== false;
+    } catch {
+        return true;
+    }
+}
+
+
 // A finger rolls a few pixels even on a deliberate tap, while a scroll travels
 // much further. Anything beyond this radius is a gesture, not a tap.
 const TAP_SLOP = 12;
@@ -310,9 +327,8 @@ export default class InputPolicy extends Extension {
         });
     }
     _isSensitiveInput() {
-        const purpose = Main.inputMethod.content_purpose;
-        return purpose === Clutter.InputContentPurpose.PASSWORD ||
-            purpose === Clutter.InputContentPurpose.PIN;
+        return Main.sessionMode?.isLocked ||
+            Main.actionMode === Shell.ActionMode.LOCK_SCREEN || hasSensitiveNativeFocus();
     }
     _wrapKeyboard() {
         const keyboard = this._manager.keyboardActor;

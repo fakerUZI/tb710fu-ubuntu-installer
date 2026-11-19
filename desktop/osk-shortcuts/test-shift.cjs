@@ -90,6 +90,22 @@ assert.equal(bottom.reduce((sum, key) => sum + (key.width ?? 1), 0), 13,
 assert.equal(bottom.find(key => key.strings?.[0] === ' ').width, 3,
     'the space bar gives one column to the injected Alt');
 assert.deepEqual(row, native, 'the native bottom-row definition is not mutated');
+const symbolBottom = [{action: 'levelSwitch', level: 'default', label: 'ABC', width: 1.5},
+    {strings: ['_']}, {strings: [' '], width: 3}, {action: 'hide'}];
+let addedRows = 0;
+const symbolLayout = {mode: 'locked', appendRow() {addedRows++;}, get_children: () => []};
+keyboard._addRowKeys(symbolBottom, symbolLayout, true);
+assert.equal(addedRows, 1);
+const navigation = seen.at(-2);
+assert.equal(Array.from(navigation, key => Number(key.keyval)).join(','),
+    [0xff1b, TAB, 0xffe3, SHIFT, 0xffe9, LEFT, 0xff52, 0xff54, 0xff53].join(','));
+assert.equal(Array.from(navigation.filter(key => !key.action), key => parseInt(key.keyval, 16)).join(','),
+    [0xff1b, TAB, LEFT, 0xff52, 0xff54, 0xff53].join(','), 'GNOME parses raw keyvals in base 16');
+assert(navigation.every(key => Number.isInteger(key.width * 2)), 'keys align to the GNOME grid');
+assert.equal(navigation.reduce((total, key) => total + key.width, 0), 6.5);
+assert.equal(seen.at(-1), symbolBottom, 'symbols and ABC stay on their native row');
+keyboard._addRowKeys(symbolBottom, layout, true);
+assert.equal(addedRows, 1, 'unlocked layout gains no extra row');
 row = native.map(key => ({...key}));
 ext.destroy();
 assert.equal(keyboard._addRowKeys, originals.add);assert.equal(keyboard._updateKeys, originals.update);

@@ -37,8 +37,11 @@ device(types.KEYBOARD_DEVICE, 'uu-remote-linux keyboard'); keyboard.open(); asse
 manager.open(); assert.equal(opened, 3);
 device(types.KEYBOARD_DEVICE, 'Virtual keyboard'); keyboard.open(); assert.equal(opened, 3);
 context.Main.inputMethod.content_purpose = 8;
+assert.equal(extension._isSensitiveInput(), false, 'stale PASSWORD does not suppress candidates without focus');
+context.Main.inputMethod.currentFocus = {is_focused: () => true};
 purposeChanged(); assert.equal(cleared, 1);
 manager.addSuggestion('secret'); assert.equal(added, 0);
+context.Main.inputMethod.currentFocus = null;
 context.Main.inputMethod.content_purpose = 0;
 manager.addSuggestion('normal'); assert.equal(added, 1);
 context.Main.actionMode = 4; keyboard.open(); assert.equal(opened, 4);
