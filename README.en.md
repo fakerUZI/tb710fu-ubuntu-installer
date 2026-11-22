@@ -6,6 +6,8 @@ The **2026-11-22 BOOTFIX release** brings a native Ubuntu 26.04 GNOME desktop to
 
 [**Download the full installer from Quark Drive (about 5.70 GiB)**](https://pan.quark.cn/s/03157595132e) · [SHA-256 checksum](SHA256SUMS.txt) · [Repair Assistant](https://github.com/fakerUZI/tb710fu-repair-catalog)
 
+**QQ community group**  `1090866174`
+
 > [!WARNING]
 > This is a clean, single-system install. Back up personal data before unlocking the bootloader. Before flashing, also keep a copy of the original `boot_a` that matches your tablet's firmware. The installer erases the selected `userdata` or `arch` partition after you enter `ERASE`.
 

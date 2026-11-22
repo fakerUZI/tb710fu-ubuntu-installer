@@ -6,6 +6,8 @@
 
 [**夸克网盘下载完整安装包（约 5.70 GiB）**](https://pan.quark.cn/s/03157595132e) · [SHA-256 校验文件](SHA256SUMS.txt) · [修复助手](https://github.com/fakerUZI/tb710fu-repair-catalog)
 
+**QQ 交流群**  `1090866174`
+
 > [!WARNING]
 > 这是单系统清空安装。解锁 Bootloader 前先备份个人数据，并在刷入前保留与本机固件匹配的原始 `boot_a` 备份。输入 `ERASE` 后，安装器会清空所选的 `userdata` 或 `arch` 分区。
 
