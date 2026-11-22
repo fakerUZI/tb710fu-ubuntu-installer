@@ -4,7 +4,7 @@
 
 **2026-11-22 BOOTFIX 正式版**为联想小新 Pad Pro GT 提供原生 Ubuntu 26.04 GNOME 桌面。通过 Fastboot 启动临时安装环境，再经 USB HTTP 恢复系统。适用机型为 **TB710FU**，Fastboot 可能显示为 `topaz_prc_wifi`。
 
-[**夸克网盘下载完整安装包（约 5.70 GiB）**](https://pan.quark.cn/s/03157595132e) · [SHA-256 校验文件](SHA256SUMS.txt) · [修复助手](https://github.com/fakerUZI/tb710fu-repair-catalog)
+[**GitHub 下载（3 个分片）**](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/tag/2026-11-22-bootfix) · [夸克网盘下载完整安装包（约 5.70 GiB）](https://pan.quark.cn/s/03157595132e) · [SHA-256 校验文件](SHA256SUMS.txt) · [修复助手](https://github.com/fakerUZI/tb710fu-repair-catalog)
 
 **QQ 交流群**  `1090866174`
 
@@ -35,6 +35,27 @@
 - 确认平板是 **TB710FU**，Bootloader 已解锁、当前为 **A 槽**，Android OTA 已完成且无快照合并。
 - 安装器要求 `boot_a` 为 **96 MiB**，并且只有一个候选目标分区，即 `userdata` 或 `arch` 两者之一，至少 **19 GiB**。如果两者同时存在，或是其他双系统布局，请先核对分区方案。
 - 准备一根可靠的 USB 数据线，直连电脑。Windows 需要可用的 Fastboot 驱动和 USB 网卡驱动，包内安装器无需 Python。Linux 和 macOS 需要 Python **3.11 或更新版本**，并将 `fastboot` 加入 `PATH`。[Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools)
+
+## 从 GitHub 下载
+
+从[正式发布页](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/tag/2026-11-22-bootfix)下载三个分片 [001](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/download/2026-11-22-bootfix/TB710FU-Ubuntu-Fastboot-USB-20261122-BOOTFIX.zip.001) · [002](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/download/2026-11-22-bootfix/TB710FU-Ubuntu-Fastboot-USB-20261122-BOOTFIX.zip.002) · [003](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/download/2026-11-22-bootfix/TB710FU-Ubuntu-Fastboot-USB-20261122-BOOTFIX.zip.003)，放在同一个文件夹。使用支持单文件超过 4 GiB 的本地磁盘，合并时需额外留出约 5.70 GiB。
+
+**Windows 命令提示符（CMD）**
+
+```bat
+set "ZIP=TB710FU-Ubuntu-Fastboot-USB-20261122-BOOTFIX.zip"
+copy /b "%ZIP%.001"+"%ZIP%.002"+"%ZIP%.003" "%ZIP%"
+certutil -hashfile "%ZIP%" SHA256
+```
+
+**Linux 或 macOS 终端**
+
+```bash
+ZIP=TB710FU-Ubuntu-Fastboot-USB-20261122-BOOTFIX.zip
+cat "$ZIP.001" "$ZIP.002" "$ZIP.003" > "$ZIP"
+```
+
+Linux 用 `sha256sum "$ZIP"`，macOS 用 `shasum -a 256 "$ZIP"` 查看合并后的哈希。核对[完整 ZIP 校验值](SHA256SUMS.txt)后，再解压安装。也可用 [分片 SHA-256](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/download/2026-11-22-bootfix/SHA256SUMS-parts.txt) 定位下载损坏的分片。
 
 ## 安装步骤
 

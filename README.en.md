@@ -4,7 +4,7 @@
 
 The **2026-11-22 BOOTFIX release** brings a native Ubuntu 26.04 GNOME desktop to the Lenovo Xiaoxin Pad Pro GT. Fastboot starts a temporary installation environment, which restores Ubuntu over USB HTTP. Use this release on **TB710FU**, which may identify itself in Fastboot as `topaz_prc_wifi`.
 
-[**Download the full installer from Quark Drive (about 5.70 GiB)**](https://pan.quark.cn/s/03157595132e) · [SHA-256 checksum](SHA256SUMS.txt) · [Repair Assistant](https://github.com/fakerUZI/tb710fu-repair-catalog)
+[**Download from GitHub (3 parts)**](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/tag/2026-11-22-bootfix) · [Download the full installer from Quark Drive (about 5.70 GiB)](https://pan.quark.cn/s/03157595132e) · [SHA-256 checksum](SHA256SUMS.txt) · [Repair Assistant](https://github.com/fakerUZI/tb710fu-repair-catalog)
 
 **QQ community group**  `1090866174`
 
@@ -35,6 +35,27 @@ The **2026-11-22 BOOTFIX release** brings a native Ubuntu 26.04 GNOME desktop to
 - Verify the model is **TB710FU**. Unlock the bootloader, finish any pending Android OTA or snapshot merge, and check that **slot A** is active.
 - The installer expects a **96 MiB** `boot_a` partition and exactly one candidate system partition, either `userdata` or `arch`, with at least **19 GiB** of capacity. If both exist or you have a different dual-boot layout, review the partition layout before proceeding.
 - Use a reliable USB data cable and connect directly to the computer. Windows needs working Fastboot and USB network drivers. The Windows installer requires no Python. Linux and macOS require Python **3.11 or later** and `fastboot` on `PATH`. [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools)
+
+## Download from GitHub
+
+Download all three parts from the [official release](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/tag/2026-11-22-bootfix) [001](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/download/2026-11-22-bootfix/TB710FU-Ubuntu-Fastboot-USB-20261122-BOOTFIX.zip.001) · [002](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/download/2026-11-22-bootfix/TB710FU-Ubuntu-Fastboot-USB-20261122-BOOTFIX.zip.002) · [003](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/download/2026-11-22-bootfix/TB710FU-Ubuntu-Fastboot-USB-20261122-BOOTFIX.zip.003) and save them in the same folder. Use a local filesystem that supports files larger than 4 GiB and free up about 5.70 GiB of additional space for the joined ZIP.
+
+**Windows Command Prompt (CMD)**
+
+```bat
+set "ZIP=TB710FU-Ubuntu-Fastboot-USB-20261122-BOOTFIX.zip"
+copy /b "%ZIP%.001"+"%ZIP%.002"+"%ZIP%.003" "%ZIP%"
+certutil -hashfile "%ZIP%" SHA256
+```
+
+**Linux or macOS terminal**
+
+```bash
+ZIP=TB710FU-Ubuntu-Fastboot-USB-20261122-BOOTFIX.zip
+cat "$ZIP.001" "$ZIP.002" "$ZIP.003" > "$ZIP"
+```
+
+On Linux, check the combined file with `sha256sum "$ZIP"`. On macOS, use `shasum -a 256 "$ZIP"`. Compare the result with the [full ZIP checksum](SHA256SUMS.txt) before extracting the archive. Use the [per-part checksums](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/download/2026-11-22-bootfix/SHA256SUMS-parts.txt) to identify a damaged download.
 
 ## Install Ubuntu
 
