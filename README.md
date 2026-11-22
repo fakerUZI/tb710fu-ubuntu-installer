@@ -1,47 +1,75 @@
-# TB710FU Ubuntu 单系统安装器 0.3.0-preview
+# 小新 Pad Pro GT（TB710FU）Ubuntu 26.04
 
-针对 Lenovo TB710FU 的 Ubuntu 单系统实验性安装器。本版本的 Windows 端到端安装及现有 Ubuntu 保留数据覆盖尚未实机验证；使用者需要备份并准备恢复方案。
+[English](README.en.md) · [完美的 Ubuntu 它来了](https://www.coolapk.com/feed/75152374?s=YzhhY2E1NGQxMzFhNzVnNmIwMzAwOWJ6a1673) · [酷安安装教程](https://www.coolapk.com/feed/75219495?s=ZTUxYWRhNzgxMzFhNzVnNmIwMmZkZTd6a1673)
 
-有两种安装模式：安卓首次安装或清空重装会删除目标 userdata/arch 分区的全部内容；现有 Ubuntu 覆盖模式支持受限制的 arch ext4 布局，尝试保留账户、/home 下的个人文件和用户设置，系统文件及部分系统设置可能被替换。它不支持保留安卓、调整安卓分区大小、独立 /home 或不兼容账户。保留模式在检查文件系统之前先写入临时 boot_a，如果检查失败可能需要恢复启动镜像；请先备份。
+**2026-11-22 BOOTFIX 正式版**为联想小新 Pad Pro GT 提供原生 Ubuntu 26.04 GNOME 桌面。通过 Fastboot 启动临时安装环境，再经 USB HTTP 恢复系统。适用机型为 **TB710FU**，Fastboot 可能显示为 `topaz_prc_wifi`。
 
-## 0.3.0 屏幕键盘补丁
+[**夸克网盘下载完整安装包（约 5.70 GiB）**](https://pan.quark.cn/s/03157595132e) · [SHA-256 校验文件](SHA256SUMS.txt) · [修复助手](https://github.com/fakerUZI/tb710fu-repair-catalog)
 
-修复解锁或离开密码框后中文候选消失的问题，符号键盘保留四排，Tab、Shift、Ctrl、Alt 和方向键与中英文主键盘对齐。原 Esc 位置的「中符」「英符」用于切换两套标点。点右侧「⇧ []{}|」可打开第二页，直接输入括号、竖线和 ≤、≥、≠。符号页底排的语言键已替换为第一页的「=」和第二页的「±」。原版 0.3.0 和已安装早期版本补丁的用户可直接在 Ubuntu 内更新，保留账户和个人文件。
+> [!WARNING]
+> 这是单系统清空安装。解锁 Bootloader 前先备份个人数据，并在刷入前保留与本机固件匹配的原始 `boot_a` 备份。输入 `ERASE` 后，安装器会清空所选的 `userdata` 或 `arch` 分区。
 
-- [下载屏幕键盘补丁](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/download/v0.3.0/TB710FU-v0.3.0-OSK-Hotfix-r5.zip)
-- [补丁安装说明](desktop/osk-hotfix/README.md)
+## 系统体验
 
-## 从官方 0.1／0.2 迁移到 0.3
+| 功能 | 说明 |
+| --- | --- |
+| 桌面和显示 | 触屏可用于网页和轻办公。内屏原生 3200 × 2000，BOOTFIX 提供 60 Hz、120 Hz 和 144 Hz，并支持自动亮度和自动旋转。 |
+| 中文输入 | 内置 Fcitx5 和屏幕键盘，支持五槽候选栏、带 Esc 的快捷栏及数字键盘。首次登录后请补装中文语言支持。 |
+| 音频和连接 | 支持四扬声器、双麦克风录音、Wi‑Fi 和蓝牙。刷机后请重新配对蓝牙设备。 |
+| 相机和人脸解锁 | 后摄支持全分辨率拍照、触摸对焦、微距入口和补光灯。保留匹配组件下的前摄预览，以及本地人脸解锁和注视亮屏。 |
+| 平板交互 | 电源键短按锁屏或亮屏，长按打开电源菜单。支持皮套合盖锁屏和锁屏背光控制。 |
+| 安卓应用 | DroidLoom 支持打开 APK 安装、窗口或全屏运行及返回手势。前作中实机测试过《重返未来：1999》，其他应用请按各自版本验证。 |
+| 修复助手 | 已安装 Ubuntu 的用户可按需更新单项补丁。后续的双击手势、补光灯和快捷手电筒、DP 外屏刷新率切换以及 60 / 144 Hz 登录显示恢复均可在助手中获取。 |
 
-已安装 0.1.0 或 0.2.0 的单系统用户可使用保留数据的迁移包。先在旧 Ubuntu 内检查启动镜像、固件、分区和账户兼容性，并保存启动镜像备份。随后在 Windows 运行专用迁移入口，使用发布的 0.3.0 系统镜像并保留账户及 `/home` 数据。
+<details>
+<summary>Ubuntu 实机截图</summary>
 
-- [下载 0.1／0.2 → 0.3 迁移预览包](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/download/v0.3.0/TB710FU-Ubuntu-v0.3.0-Migration.zip)
-- [迁移说明](migration/README.md)
+![TB710FU 上运行的 Ubuntu 与修复助手](assets/ubuntu-repair-assistant.jpg)
 
-## Ubuntu 26.04 日常软件包更新
+</details>
 
-在 TB710FU 的 Ubuntu 26.04 中，可以直接更新已安装的软件包。打开终端，在下载目录运行下面的命令。第一条预览本机索引中的更新，第二条刷新索引并让你在终端确认实际更新计划。
+## 安装前
 
-```bash
-bash tb710fu-update.sh --check
-sudo bash tb710fu-update.sh --apply
-```
+- 确认平板是 **TB710FU**，Bootloader 已解锁、当前为 **A 槽**，Android OTA 已完成且无快照合并。
+- 安装器要求 `boot_a` 为 **96 MiB**，并且只有一个候选目标分区，即 `userdata` 或 `arch` 两者之一，至少 **19 GiB**。如果两者同时存在，或是其他双系统布局，请先核对分区方案。
+- 准备一根可靠的 USB 数据线，直连电脑。Windows 需要可用的 Fastboot 驱动和 USB 网卡驱动，包内安装器无需 Python。Linux 和 macOS 需要 Python **3.11 或更新版本**，并将 `fastboot` 加入 `PATH`。[Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools)
 
-更新使用本机已配置的 APT 软件源，保留现有账户、家目录和用户设置。APT 保留修改过的配置文件，不卸载已安装的软件包。TB710FU 专用内核、固件及硬件适配请通过平板上的修复助手更新。这个入口适用于 Ubuntu 26.04 内的日常更新。
+## 安装步骤
 
-- [下载 Ubuntu 原地更新脚本](https://github.com/fakerUZI/tb710fu-ubuntu-installer/releases/download/ubuntu-update-v1/tb710fu-update.sh)
-- [Ubuntu 软件包管理说明](https://ubuntu.com/server/docs/how-to/software/package-management/)
+1. 下载 `TB710FU-Ubuntu-Fastboot-USB-20261122-BOOTFIX.zip`，核对 SHA-256 后完整解压。Windows 可用 `Get-FileHash -Algorithm SHA256 .\TB710FU-Ubuntu-Fastboot-USB-20261122-BOOTFIX.zip`，Linux 和 macOS 可分别用 `sha256sum` 或 `shasum -a 256` 检查。[SHA-256 校验文件](SHA256SUMS.txt)
+2. 将平板关机，按 **电源键 + 音量加键** 进入酷安教程所示的 bootloader Fastboot。确认平板显示 **START**，再用 USB 数据线直连电脑。若显示 `fastbootd`，先返回 bootloader Fastboot。
+3. 进入解压后的 `TB710FU-Ubuntu-Fastboot-USB-Clean` 目录，运行对应入口。
 
-## Windows 安装
+   | 电脑系统 | 安装入口 |
+   | --- | --- |
+   | Windows | 双击 `Install-TB710FU.cmd` |
+   | Linux | 运行 `bash ./Install-Linux.sh` |
+   | macOS | 双击 `Install-macOS.command`，或运行 `bash ./Install-macOS.command` |
 
-需要已解锁的 Bootloader、fastboot 驱动、Windows 本地磁盘至少 40 GiB 空闲及可靠的数据线。不要重锁 Bootloader。从 Releases 下载启动包，在 Windows 解压并运行 `windows/install.cmd`。按提示选择模式并输入 ERASE 或 KEEP。镜像分片联网下载并校验；安装完成后重启 Ubuntu。不要公开安装工作目录。
+4. 按提示输入自选的 Ubuntu 用户名和新密码。用户名以小写字母或下划线开头，最多 31 个字符，可使用小写字母、数字、下划线和连字符。新密码须为 8–128 字节。
+5. 核对目标分区及容量后输入 **`ERASE`**。安装器会在格式化前将目标机的 GPT 备份保存到电脑。如果目标是 `userdata`，它会改名为 `arch`。保持 USB 连接，等安装器报告完成并看到 Ubuntu 登录界面，再按提示结束安装器。
+6. 用刚设置的账户登录。首次进入后打开 **「语言支持」**，按提示补装简体中文语言包，让设置页面和屏幕键盘完整显示。应用语言后可注销再登录。如果要从终端补装，可运行：
 
-系统包含 200% 默认缩放、自定义电源键、皮套背光、输入法和后摄适配。账户名通过活动会话识别。启动镜像使用经核对的 20261118 TB710FU 内核；[内核发布与源码](https://github.com/fakerUZI/tb710fu-repair-catalog/releases/tag/kernel-20261118)。本版本 Windows 安装和覆盖安装尚待实机确认。
+   ```bash
+   sudo apt update
+   sudo apt install language-pack-zh-hans language-pack-gnome-zh-hans
+   ```
 
-`device/` 是设备端安装逻辑，`windows/` 是 Windows 入口，`tools/` 包含 NBD 服务器与构建工具，`desktop/` 包含桌面适配源码。本仓库不提供完整镜像重建环境；部分组件需要上游源码、工具链和输入。
+   蓝牙设备需重新配对，人脸解锁需在新账户下重新录入。已有 Ubuntu 的用户可在修复助手点「更新仓库」，按需应用后续条目。[修复助手](https://github.com/fakerUZI/tb710fu-repair-catalog)
 
-Kimpanel 修改继承 GPL-2.0-or-later，许可见 `desktop/kimpanel/COPYING`。NBD 服务器和部分启动工具源自 [TB710FU Arch Linux port](https://github.com/deinthoedoka/TB710FU-Archlinux)，遵循附带许可。发行文件包含硬件固件，其再分发许可需要核实。设备备份、个人数据、凭据、设备唯一标识和已停止的前摄实验不属于公开内容。
+<details>
+<summary>查看连接平板示意图</summary>
 
-镜像保留修复助手和 Google Chrome，排除原机浏览器用户资料、账户与缓存；QQ、WorkBuddy 和 FlClash 不包含在内。Chrome 和固件的再分发条件需要核实；参见 [Chrome 附加条款](https://www.google.com/chrome/terms/)和 [Google 服务条款](https://policies.google.com/terms)。
+![先备份，再进入 bootloader Fastboot 并用 USB 数据线直连电脑](assets/fastboot-connection.jpg)
 
-本版本镜像中实际安装的屏幕键盘扩展源码见 `desktop/installed-20261119/`；主分支同时保留后续合并的扩展改动。
+</details>
+
+## 常见问题
+
+- **电脑找不到设备**。确认屏幕停在 **START**。Windows 检查 Fastboot 驱动，Linux 或 macOS 检查 `fastboot devices` 是否只列出这台平板。可更换数据线或直连 USB 口。
+- **临时系统启动了，但 USB 传输一直不开始**。确认系统出现新的 NCM/RNDIS USB 网卡。若未自动分配地址，只给这块 USB 网卡设为 **`172.16.42.2/24`**，网关留空，并允许来自平板 **`172.16.42.1`** 的 **TCP 10809** 连接。
+- **旧包在传输约 12 MB 后黑屏**。退出旧安装器，回到 **START**，使用本页提供的 BOOTFIX 完整包。
+- **提示槽位、OTA 或分区检查失败**。按安装器提示核对目标机条件。若已经写入临时引导后中断，保留电脑上的备份与错误信息，恢复时用与目标机当前固件对应的原始 `boot_a`。
+- **60 Hz 解锁或登录后偶发无画面**。更新修复助手，运行 **「TB710FU GNOME 登录与解锁黑屏恢复（60 / 144 Hz 内屏）」**。[在线修复条目](https://github.com/fakerUZI/tb710fu-repair-catalog)
+
+发布介绍和安装步骤整理自青山揽梦丶的两篇酷安文章，并按正式包入口补齐了 Windows、Linux 和 macOS 的流程。

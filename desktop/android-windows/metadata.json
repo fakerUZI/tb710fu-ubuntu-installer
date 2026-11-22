@@ -1,9 +1,0 @@
-{
-  "uuid": "tb-android-windows@tb710fu",
-  "name": "TB710FU 安卓窗口控制",
-  "description": "为安卓窗口添加外部标题栏、应用名称及最小化/最大化/关闭按钮，保留触屏窗口尺寸菜单。",
-  "shell-version": [
-    "50"
-  ],
-  "version": 4
-}
